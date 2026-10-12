@@ -1,24 +1,26 @@
 import ts from 'typescript'
-import { Splice, replaceToken, withTransforms, type NodeProps, type Transform } from '../../core'
+import { NodeSpan, replaceToken, spliceChildren, type NodeProps, type PickChild, type Transform } from '../../core'
+import { RubyBody } from './braces'
 
 const Def = replaceToken('def')
 
-/** Within a function node only: the `function` keyword reads as `def`. */
-const keywordAsDef: Transform = (next) => (node, ctx) =>
-  node.kind === ts.SyntaxKind.FunctionKeyword ? Def : next(node, ctx)
-
 /**
- * Owns the rendering of a function. For now it keeps the default layout and
- * only changes the keyword, by scoping `keywordAsDef` to its own subtree.
- * Further Ruby-isms (dropping braces for `end`, omitting empty parens) belong
- * here too, at which point this stops delegating to Splice and lays out the
- * children itself.
+ * Owns the rendering of a function. It lays out its direct children itself:
+ * the `function` keyword reads as `def`, and the body block gets `end`
+ * instead of braces. Everything else (name, parameters, return type) is
+ * dispatched normally.
  */
-function RubyFunction({ node, ctx }: NodeProps) {
-  return <Splice node={node} ctx={withTransforms(ctx, [keywordAsDef])} />
+const pickFunctionChild: PickChild = (child) => {
+  if (child.kind === ts.SyntaxKind.FunctionKeyword) return Def
+  if (ts.isBlock(child)) return RubyBody
+  return undefined
 }
 
-/** `function f()` reads as `def f()`. */
+function RubyFunction({ node, ctx }: NodeProps) {
+  return <NodeSpan node={node}>{spliceChildren(node, ctx, pickFunctionChild)}</NodeSpan>
+}
+
+/** `function f() { ... }` reads as `def f() ... end`. */
 export const rubyFunction: Transform = (next) => (node, ctx) =>
   ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
     ? RubyFunction

@@ -27,12 +27,13 @@ src/core/          building blocks shared by every theme
   types.ts         NodeProps / Ctx / Resolve / Transform / Theme
   render.tsx       <Render> dispatches to a component; compose() stacks transforms on a base resolver;
                    withTransforms() scopes extra transforms to one component's subtree
-  splice.tsx       spliceChildren(): the text-splicing building block; Splice: default component using it,
-                   with no transforms the output equals the input verbatim
-  token.tsx        replaceToken(): component factory for rendering a token as different text
+  splice.tsx       spliceChildren(node, ctx, pick?): the text-splicing building block, where `pick` lets
+                   a parent choose the component for specific direct children; NodeSpan: the kind-tagged
+                   span; Splice: default component, with no transforms the output equals the input verbatim
+  token.tsx        replaceToken(): render a token as different text; OmitToken: render a token as nothing
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
-  ruby/            TypeScript read with Ruby's eyes; function.tsx shows `function` as `def`
+  ruby/            TypeScript read with Ruby's eyes: `def`, and `end` instead of braces on functions and classes
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/main.tsx       demo page: pick a theme, render sample.ts into a <pre>
 test/core/         tests for the core building blocks
@@ -74,14 +75,18 @@ A transform claims the node that *owns* a decision and hands it to a
 component. The component decides the layout of its subtree, then dispatches
 the children it does not care about through the normal machinery.
 
-```ts
+```tsx
 // src/themes/ruby/function.tsx
 const Def = replaceToken('def')
-const keywordAsDef: Transform = next => (node, ctx) =>
-  node.kind === ts.SyntaxKind.FunctionKeyword ? Def : next(node, ctx)
+
+const pickFunctionChild: PickChild = child => {
+  if (child.kind === ts.SyntaxKind.FunctionKeyword) return Def
+  if (ts.isBlock(child)) return RubyBody
+  return undefined
+}
 
 function RubyFunction({ node, ctx }: NodeProps) {
-  return <Splice node={node} ctx={withTransforms(ctx, [keywordAsDef])} />
+  return <NodeSpan node={node}>{spliceChildren(node, ctx, pickFunctionChild)}</NodeSpan>
 }
 
 export const rubyFunction: Transform = next => (node, ctx) =>
@@ -90,19 +95,21 @@ export const rubyFunction: Transform = next => (node, ctx) =>
     : next(node, ctx)
 
 // src/themes/ruby/index.ts
-export const ruby: Theme = { name: 'ruby', transforms: [rubyFunction] }
+export const ruby: Theme = { name: 'ruby', transforms: [rubyFunction, rubyClass] }
 ```
 
-Two things to notice:
+There are two ways for a component to influence what is rendered below it,
+and the difference is scope:
 
-- `keywordAsDef` is not in the global list. `RubyFunction` stacks it onto the
-  ctx it passes to its children via `withTransforms`, so it applies to that
-  subtree only. Global and local decisions use the same mechanism; only the
-  scope differs.
-- `RubyFunction` delegates layout to `Splice` because it only changes one
-  token today. Once it wants to drop braces for `end` or omit empty parens,
-  it stops delegating and lays the children out itself, using
-  `spliceChildren` or `<Render>` for the parts it leaves alone.
+- `spliceChildren(node, ctx, pick)` lets it choose the component for
+  specific *direct* children. Grandchildren are untouched. This is how
+  `RubyFunction` hands its body to `RubyBody`, which in turn drops its own
+  `{` and renders its own `}` as `end` without affecting the `if` blocks and
+  object literals inside.
+- `withTransforms(ctx, transforms)` stacks transforms onto the ctx passed
+  down, so they apply to the *whole subtree*. Global and local decisions use
+  the same mechanism; only the scope differs. Use it for things like "every
+  identifier in here", not for structural rewrites.
 
 `transforms[0]` is outermost and gets the first chance to claim a node.
 Transforms that span sibling nodes (e.g. collapsing consecutive guards into

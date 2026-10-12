@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import type { Ctx, NodeProps } from './types'
+import type { Ctx, NodeComponent, NodeProps } from './types'
 import { Render } from './render'
 import { kindName } from './kind'
 
@@ -25,26 +25,50 @@ export function leadingTrivia(node: ts.Node, sourceFile: ts.SourceFile): string 
 }
 
 /**
+ * A parent's say over its *direct* children: return a component to render
+ * this child with, or undefined to fall through to the normal `resolve`.
+ * Grandchildren are unaffected. Compare `withTransforms`, which applies to
+ * the whole subtree.
+ */
+export type PickChild = (child: ts.Node, ctx: Ctx) => NodeComponent | undefined
+
+/**
  * The splicing itself, as a reusable building block for components.
  *
  * Returns the node's source range [pos, end) with every child's range
- * replaced by a recursive <Render> of that child, and whatever lies between
- * children emitted verbatim. Components that want to own a node's layout
- * but not re-implement child dispatch call this, usually with a ctx from
- * `withTransforms`.
+ * replaced by a render of that child, and whatever lies between children
+ * emitted verbatim. Components that want to own a node's layout but not
+ * re-implement child dispatch call this, optionally with a `pick` to
+ * override the component for specific direct children.
  */
-export function spliceChildren(node: ts.Node, ctx: Ctx): preact.ComponentChildren[] {
+export function spliceChildren(node: ts.Node, ctx: Ctx, pick?: PickChild): preact.ComponentChildren[] {
   const text = ctx.sourceFile.text
   const parts: preact.ComponentChildren[] = []
   let cursor = node.pos
   for (const child of childNodes(node, ctx.sourceFile)) {
     if (child.pos < cursor) continue // defensive: overlapping node
     if (child.pos > cursor) parts.push(text.slice(cursor, child.pos))
-    parts.push(<Render key={child.pos} node={child} ctx={ctx} />)
+    const Picked = pick?.(child, ctx)
+    parts.push(
+      Picked ? <Picked key={child.pos} node={child} ctx={ctx} /> : <Render key={child.pos} node={child} ctx={ctx} />,
+    )
     cursor = child.end
   }
   if (cursor < node.end) parts.push(text.slice(cursor, node.end))
   return parts
+}
+
+/** The kind-tagged span every node component wraps itself in. */
+export function NodeSpan({
+  node,
+  children,
+  ...attrs
+}: { node: ts.Node; children?: preact.ComponentChildren } & Record<`data-${string}`, string | undefined>) {
+  return (
+    <span data-kind={kindName(node.kind)} {...attrs}>
+      {children}
+    </span>
+  )
 }
 
 /**
@@ -53,5 +77,5 @@ export function spliceChildren(node: ts.Node, ctx: Ctx): preact.ComponentChildre
  * equals the input text exactly.
  */
 export function Splice({ node, ctx }: NodeProps) {
-  return <span data-kind={kindName(node.kind)}>{spliceChildren(node, ctx)}</span>
+  return <NodeSpan node={node}>{spliceChildren(node, ctx)}</NodeSpan>
 }
