@@ -1,0 +1,20 @@
+body {
+  margin: 0;
+  padding: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #fdfdfd;
+  color: #222;
+}
+pre {
+  margin: 0;
+  white-space: pre;
+}
+/* Every node is a span tagged with its SyntaxKind; style hooks go here. */
+[data-kind] {
+  border-radius: 2px;
+}
+[data-kind]:hover {
+  outline: 1px solid rgba(0, 0, 0, 0.15);
+}
