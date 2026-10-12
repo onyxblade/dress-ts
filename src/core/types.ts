@@ -29,3 +29,13 @@ export type Resolve = (node: ts.Node, ctx: Ctx) => NodeComponent
  * its own component, or defer to `next`.
  */
 export type Transform = (next: Resolve) => Resolve
+
+/**
+ * A theme is a self-contained set of rendering decisions. Themes live in
+ * their own folders under src/themes and are not meant to be merged; pick
+ * one. Shared building blocks go in src/core instead.
+ */
+export interface Theme {
+  name: string
+  transforms: Transform[]
+}

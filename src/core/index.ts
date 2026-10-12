@@ -1,4 +1,5 @@
 export * from './types'
-export { Render, compose, createCtx } from './render'
-export { Splice, childNodes } from './splice'
+export { Render, compose, createCtx, withTransforms } from './render'
+export { Splice, spliceChildren, childNodes, leadingTrivia } from './splice'
+export { replaceToken } from './token'
 export { kindName } from './kind'

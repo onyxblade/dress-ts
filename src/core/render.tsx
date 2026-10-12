@@ -18,3 +18,12 @@ export function compose(base: Resolve, transforms: Transform[]): Resolve {
 export function createCtx(sourceFile: ts.SourceFile, resolve: Resolve): Ctx {
   return { sourceFile, resolve }
 }
+
+/**
+ * A ctx whose resolver has extra transforms stacked on top. A component
+ * passes this to its children to make decisions that apply to its own
+ * subtree only. Same mechanism as the global transform list, narrower scope.
+ */
+export function withTransforms(ctx: Ctx, transforms: Transform[]): Ctx {
+  return { ...ctx, resolve: compose(ctx.resolve, transforms) }
+}
