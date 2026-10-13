@@ -51,7 +51,10 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
-src/main.tsx       demo page: bundle the lib files, build a program over sample.ts, pick a theme, render
+src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
+src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
+                   not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker)
+src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```
 
@@ -227,7 +230,7 @@ one line) are a container's job: `Lines` is where grouping would go.
 ## Commands
 
 ```
-pnpm dev        # view sample.ts through the current theme
+pnpm dev        # sample.ts side by side; ?left=source&right=ruby picks the views
 pnpm test       # vitest
 pnpm typecheck  # tsc
 ```

@@ -1,6 +1,6 @@
 import { render } from 'preact'
-import { Render, Verbatim, compose, createCtx, createMemoryProgram } from './core'
-import { ruby } from './themes/ruby'
+import { createMemoryProgram } from './core'
+import { App } from './app'
 import sampleText from './sample.ts?raw'
 
 // The checker needs the compiler's lib files. Bundle the ES2022 chain as text
@@ -18,12 +18,4 @@ const libs = (name: string) => libText[`/node_modules/typescript/lib/${name}`]
 
 const program = createMemoryProgram({ 'sample.ts': sampleText }, libs)
 
-const theme = ruby
-const ctx = createCtx(program, 'sample.ts', compose(() => Verbatim, theme.transforms))
-
-render(
-  <pre class="code" data-theme={theme.name}>
-    <Render node={ctx.sourceFile} ctx={ctx} />
-  </pre>,
-  document.getElementById('app')!,
-)
+render(<App program={program} fileName="sample.ts" />, document.getElementById('app')!)
