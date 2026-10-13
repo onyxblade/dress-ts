@@ -24,7 +24,7 @@ export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.Method
  *
  * The body's last line is where Ruby reads the value: a last `return x`
  * reads as `x` (see return.tsx), and a last line that is not a `return`
- * is followed by a `return undefined` of the theme's own, so the reader
+ * is followed by an `undefined` of the theme's own, so the reader
  * does not take the line for the value.
  */
 export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {

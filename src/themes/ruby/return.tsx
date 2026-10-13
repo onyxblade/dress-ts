@@ -49,14 +49,16 @@ function leaves(s: ts.Statement): boolean {
   return false
 }
 
-const NOTE = 'a last line that is not a `return` gets `return undefined` after it: the function returns that, where Ruby would return the line'
+const NOTE = 'a last line that is not a `return` gets `undefined` after it: the function returns that, where Ruby would return the line'
 
 /**
  * The line a body needs after its last statement when that statement is
  * not a `return`: Ruby would read the statement's value as the
  * function's, and the function returns `undefined` instead, so the theme
- * says so, in words of its own. The mark is the last statement's, since
- * that is the line the reader would have misread.
+ * puts `undefined` on a last line of its own, the value where Ruby reads
+ * it, with no `return`, the same as the last `return x` loses its. The
+ * mark is the last statement's, since that is the line the reader would
+ * have misread.
  *
  * An empty body gets no line: Ruby's `nil` and this `undefined` say the
  * same nothing. A body whose last statement leaves on every path (see
@@ -69,7 +71,7 @@ export function UndefinedReturn({ fn, ctx }: { fn: ts.SignatureDeclaration; ctx:
   return (
     <Line>
       <Reading node={last} note={NOTE}>
-        return undefined
+        undefined
       </Reading>
     </Line>
   )

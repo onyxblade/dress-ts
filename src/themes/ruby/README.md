@@ -23,7 +23,7 @@ The order is outermost first. The designed components claim their kinds;
 | `sourceFile.tsx` | the file | its statements one per line, comments and blank-line groups kept |
 | `function.tsx` | `function f() { ... }`, a function expression, a method `m() { ... }`, `constructor() { ... }` | `def f() ... end`, `def constructor() ... end` |
 | `return.tsx` | `return x` as the last line of a body | `x` |
-| `return.tsx` | a last line that is not a `return` | the line, then `return undefined` |
+| `return.tsx` | a last line that is not a `return` | the line, then `undefined` |
 | `class.tsx` | `class A<T> extends B { ... }` | `class A[T] < B ... end` |
 | `class.tsx` | `interface A<T> extends B { ... }` | `interface A[T] < B ... end` |
 | `class.tsx` | `extends B` | `< B`, the `implements` left as written |
@@ -82,9 +82,10 @@ shown as written, braces and all, so their `return` stays with them.
 
 The same Ruby eye misreads a body whose last line is not a `return`: it
 takes the line's value for the function's, and the function returns
-`undefined`. So `RubyFunction` writes `return undefined` after that line,
-in words of its own, marked with the last statement, since that is the
-line the reader would have misread. An empty body gets no such line,
+`undefined`. So `RubyFunction` writes `undefined` on a last line of its
+own, the value where Ruby reads it, with no `return`, as the last `return
+x` has none; the mark is the last statement's, since that is the line
+the reader would have misread. An empty body gets no such line,
 Ruby's `nil` and this `undefined` saying the same nothing; neither does a
 body whose last statement leaves on every path, a `throw`, a block
 ending in a jump, an `if` whose both branches do. That much the syntax

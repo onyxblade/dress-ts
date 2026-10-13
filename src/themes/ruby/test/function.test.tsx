@@ -22,12 +22,12 @@ describe('rubyFunction', () => {
 
   it('keeps comments in the body', () => {
     expect(show('function f() {\n  // one\n  a() // two\n\n  b()\n}')).toBe(
-      'def f()\n  // one\n  a() // two\n\n  b()\n  return undefined\nend\n',
+      'def f()\n  // one\n  a() // two\n\n  b()\n  undefined\nend\n',
     )
   })
 
   it('shows undesigned nested statements verbatim, re-indented', () => {
-    expect(show('function f() {\n    if (x) {\n      y\n    }\n}')).toBe('def f()\n  if (x) {\n    y\n  }\n  return undefined\nend\n')
+    expect(show('function f() {\n    if (x) {\n      y\n    }\n}')).toBe('def f()\n  if (x) {\n    y\n  }\n  undefined\nend\n')
   })
 
   it('renders an overload signature without end', () => {

@@ -44,8 +44,8 @@ describe('rubyLastReturn', () => {
 describe('UndefinedReturn', () => {
   const show = (text: string) => renderText(text, [rubyFunction, rubyLastReturn, rubyIf])
 
-  it('follows a last line that is not a return with return undefined', () => {
-    expect(show('function f() {\n  a()\n  b()\n}')).toBe('def f()\n  a()\n  b()\n  return undefined\nend\n')
+  it('follows a last line that is not a return with undefined', () => {
+    expect(show('function f() {\n  a()\n  b()\n}')).toBe('def f()\n  a()\n  b()\n  undefined\nend\n')
   })
 
   it('adds nothing to an empty body, a constructor or a last throw', () => {
@@ -61,16 +61,16 @@ describe('UndefinedReturn', () => {
     expect(show('function f() {\n  if (x) {\n    return 1\n  } else {\n    throw e\n  }\n}')).toBe(
       'def f()\n  if x\n    return 1\n  else\n    throw e\n  end\nend\n',
     )
-    expect(show('function f() {\n  if (x) return 1\n}')).toBe('def f()\n  return 1 if x\n  return undefined\nend\n')
+    expect(show('function f() {\n  if (x) return 1\n}')).toBe('def f()\n  return 1 if x\n  undefined\nend\n')
   })
 
   it('comes after the comments that close the body', () => {
-    expect(show('function f() {\n  a()\n\n  // dangling\n}')).toBe('def f()\n  a()\n\n  // dangling\n  return undefined\nend\n')
+    expect(show('function f() {\n  a()\n\n  // dangling\n}')).toBe('def f()\n  a()\n\n  // dangling\n  undefined\nend\n')
   })
 
   it('marks the line with the last statement', () => {
     expect(renderHtml('function f() {\n  a()\n}', [rubyFunction])).toContain(
-      'data-reading="a last line that is not a `return` gets `return undefined` after it: the function returns that, where Ruby would return the line" data-node="ExpressionStatement@14-20"',
+      'data-reading="a last line that is not a `return` gets `undefined` after it: the function returns that, where Ruby would return the line" data-node="ExpressionStatement@14-20"',
     )
   })
 })
