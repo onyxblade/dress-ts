@@ -59,24 +59,28 @@ export function Join({ nodes, sep, ctx }: { nodes: readonly ts.Node[] | undefine
   )
 }
 
-/** Comments on lines of their own, with a gap before the first when asked. */
-export function CommentLines({ comments, gap = false }: { comments: readonly Comment[]; gap?: boolean }) {
-  return (
-    <>
-      {comments.map((c, j) => (
-        <Line key={c.pos} data-gap={gap && j === 0 ? '' : undefined}>
-          <CommentText comment={c} />
-        </Line>
-      ))}
-    </>
-  )
-}
+/**
+ * What a Line of a list is laid out for: a node with the comments that
+ * share its line, or a comment on a line of its own. `start` and `end`
+ * bound what the line shows, in the source: a node's reach from its first
+ * same-line leading comment to its last trailing one.
+ */
+type Item =
+  | { kind: 'node'; node: ts.Node; inline: readonly Comment[]; trailing: readonly Comment[]; start: number; end: number }
+  | { kind: 'comment'; comment: Comment; start: number; end: number }
 
 /**
- * Statement-like nodes, one per Line, with their comments: leading
- * comments get lines of their own, a trailing comment stays on the line.
- * A blank line in the source between two nodes is kept as a gap, since
- * authors use those to group.
+ * Statement-like nodes, one per Line, with their comments. A leading
+ * comment on a line of its own above the node gets a Line of its own; one
+ * on the node's line, and a trailing comment, stay on the node's line. A
+ * blank line in the source between two lines is kept as a gap, since
+ * authors use those to group: between two comments, between a comment and
+ * the node under it, between two nodes. The gap is yes or no, not a count,
+ * and the first line has none.
+ *
+ * The order is the caller's, the source positions only decide the gaps.
+ * They assume the nodes come in source order; a theme that reorders will
+ * need to say what a gap means then.
  *
  * `within` is the node the list is the body of (a block, a class, the
  * file). Comments after its last child dangle from it, in the AST's terms
@@ -85,31 +89,55 @@ export function CommentLines({ comments, gap = false }: { comments: readonly Com
 export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; within?: ts.Node; ctx: Ctx }) {
   const { sourceFile, comments } = ctx
   const lineOf = (pos: number) => sourceFile.getLineAndCharacterOfPosition(pos).line
-  const gapBefore = (pos: number, prev: ts.Node | undefined) => prev !== undefined && lineOf(pos) - lineOf(prev.end) > 1
-  const dangling = within ? comments.of(within).dangling : []
-  const last = nodes[nodes.length - 1]
+  const ownLine = (c: Comment): Item => ({ kind: 'comment', comment: c, start: c.pos, end: c.end })
+
+  const items: Item[] = []
+  for (const node of nodes) {
+    const { leading, trailing } = comments.of(node)
+    const start = node.getStart(sourceFile)
+    const line = lineOf(start)
+    const inline = leading.filter((c) => lineOf(c.end) === line)
+    items.push(...leading.filter((c) => lineOf(c.end) < line).map(ownLine))
+    items.push({
+      kind: 'node',
+      node,
+      inline,
+      trailing,
+      start: inline[0]?.pos ?? start,
+      end: trailing[trailing.length - 1]?.end ?? node.end,
+    })
+  }
+  if (within) items.push(...comments.of(within).dangling.map(ownLine))
+
   return (
     <>
-      {nodes.map((n, i) => {
-        const { leading, trailing } = comments.of(n)
-        const first = leading[0]?.pos ?? n.getStart(sourceFile)
-        const gap = gapBefore(first, nodes[i - 1])
-        return (
-          <>
-            <CommentLines comments={leading} gap={gap} />
-            <Line key={n.pos} node={n} data-gap={gap && leading.length === 0 ? '' : undefined}>
-              <Dispatch node={n} ctx={ctx} />
-              {trailing.map((c) => (
-                <>
-                  {' '}
-                  <CommentText key={c.pos} comment={c} />
-                </>
-              ))}
+      {items.map((item, i) => {
+        const prev = items[i - 1]
+        const gap = prev !== undefined && lineOf(item.start) - lineOf(prev.end) > 1 ? '' : undefined
+        if (item.kind === 'comment') {
+          return (
+            <Line key={`c${item.comment.pos}`} data-gap={gap}>
+              <CommentText comment={item.comment} />
             </Line>
-          </>
+          )
+        }
+        return (
+          <Line key={`n${item.node.pos}`} node={item.node} data-gap={gap}>
+            {item.inline.map((c) => (
+              <>
+                <CommentText key={c.pos} comment={c} />{' '}
+              </>
+            ))}
+            <Dispatch node={item.node} ctx={ctx} />
+            {item.trailing.map((c) => (
+              <>
+                {' '}
+                <CommentText key={c.pos} comment={c} />
+              </>
+            ))}
+          </Line>
         )
       })}
-      {dangling.length > 0 && <CommentLines comments={dangling} gap={gapBefore(dangling[0].pos, last)} />}
     </>
   )
 }

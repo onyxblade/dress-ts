@@ -101,6 +101,33 @@ describe('comments in designed layout', () => {
     expect(renderText('{\n  // only\n}', designed)).toBe('{\n  // only\n}\n')
   })
 
+  it('Lines keeps the blank lines between comments, and between a comment and its node', () => {
+    const src = '{\n  a()\n\n  // --- helpers ---\n\n  // about b\n  b()\n\n  // c\n\n  c()\n}'
+    expect(renderText(src, designed)).toBe(src + '\n')
+  })
+
+  it('Lines keeps the blank lines between dangling comments', () => {
+    const src = '{\n  a()\n\n  // x\n\n  // y\n}'
+    expect(renderText(src, designed)).toBe(src + '\n')
+  })
+
+  it('Lines keeps the blank lines of a block with leading and dangling comments alike', () => {
+    const src = '{\n  // lead\n\n  a()\n\n  // x\n\n  // y\n}'
+    expect(renderText(src, designed)).toBe(src + '\n')
+  })
+
+  // The continuation lines of these block comments start at column 0:
+  // CommentText shows a comment's text as written, so a line indented in
+  // the source would be indented twice under the Indent.
+  it('Lines measures a gap from the end of a trailing comment, not of the node', () => {
+    expect(renderText('{\n  a() /* m\nn */\n  b()\n}', designed)).toBe('{\n  a() /* m\n  n */\n  b()\n}\n')
+    expect(renderText('{\n  a() /* m\nn */\n\n  b()\n}', designed)).toBe('{\n  a() /* m\n  n */\n\n  b()\n}\n')
+  })
+
+  it('Lines keeps a leading comment on the line of its node when it was there', () => {
+    expect(renderText('{\n  /* x */ a()\n  /* y\nz */ b()\n}', designed)).toBe('{\n  /* x */ a()\n  /* y\n  z */ b()\n}\n')
+  })
+
   it('Render emits the comments attached to the child inline', () => {
     expect(renderText('/* a */ f /* b */ ()', designed)).toBe('/* a */ f /* b */()')
   })

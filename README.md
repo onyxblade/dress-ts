@@ -137,7 +137,8 @@ Two details make the fallback coexist with designed layout:
 
 - A node's verbatim text starts *after* its leading trivia. Comments before
   a node belong to whoever lays the node out: the parent's gap text in
-  `Verbatim`, or `Lines`, which gives each its own line (see Comments).
+  `Verbatim`, or `Lines`, which gives each a line of its own, or the
+  node's line when it was there (see Comments).
 - Multi-line verbatim text is shown relative to the indentation of its
   first line, so an undesigned `if` block placed under an `Indent` lines up
   with its designed siblings. `Line` and `Indent` reset that scope.
@@ -200,9 +201,13 @@ the comments attached to its children.
 - `Render` emits the leading and trailing comments of the child it is
   handed, inline, so a designed component that puts a child somewhere keeps
   the child's comments without asking.
-- `Lines` gives leading comments lines of their own, keeps a trailing one on
-  the statement's line, and, given the node the list is the body of
-  (`within`), ends with that node's dangling comments.
+- `Lines` lays its list out as one flat sequence of lines: a leading
+  comment above the statement gets a line of its own, one on the
+  statement's line stays there with the trailing ones, and, given the node
+  the list is the body of (`within`), the sequence ends with that node's
+  dangling comments. A blank line in the source between any two of these
+  lines is kept as a gap, so the grouping an author did with blank lines
+  survives, between comments as much as between statements.
 
 What a designed component can still get wrong is skipping a node (rendering
 its grandchildren directly, so nobody renders the comments attached to the
