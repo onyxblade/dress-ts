@@ -5,6 +5,7 @@ import { rubyClass } from './class'
 import { rubyIf } from './if'
 import { rubyNew } from './new'
 import { rubyInstanceVariable, rubyThis } from './this'
+import { rubyField } from './field'
 import { rubyFallback } from './fallback'
 
 /**
@@ -13,5 +14,5 @@ import { rubyFallback } from './fallback'
  */
 export const ruby: Theme = {
   name: 'ruby',
-  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyInstanceVariable, rubyThis, semanticIdentifiers, rubyFallback],
+  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyField, rubyInstanceVariable, rubyThis, semanticIdentifiers, rubyFallback],
 }

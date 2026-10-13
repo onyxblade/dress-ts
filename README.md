@@ -57,7 +57,8 @@ src/core/          building blocks shared by every theme
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, `new Foo(a)` as `Foo.new(a)`,
-                   generics as `Set[string]`, `this` as `self` and a field `this.x` as `@x`, no line-ending `;`
+                   generics as `Set[string]`, `this` as `self`, a field `this.x` as `@x` and its declaration
+                   `private readonly x = v` as `@x = v`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
