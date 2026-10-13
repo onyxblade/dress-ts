@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyField, rubyInstanceVariable, rubyThis, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -26,6 +26,7 @@ The order is outermost first. The designed components claim their kinds;
 | `if.tsx` | `if (x) { ... } else if (y) { ... } else { ... }` | `if x ... elsif y ... else ... end` |
 | `if.tsx` | `if (x) return 0` | `return 0 if x` |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
+| `variables.tsx` | `const x = 1`, `let x = 1`, `for (const x of xs)` | `x = 1`, `for (x of xs)` |
 | `field.tsx` | `private readonly x = v` | `@x = v` |
 | `this.tsx` | `this.x` on a field | `@x` |
 | `this.tsx` | `this` | `self` |
@@ -66,6 +67,16 @@ before an `else`, go on the `else`/`elsif` line.
 on the class, `Set[string].new()`, since they describe what is made rather
 than the call. `new Foo` with no argument list reads as `Foo.new`, parens
 left out as Ruby would.
+
+### Variables
+
+Ruby declares a variable by assigning to it, so `const`, `let` and `var`
+are noise: `const x = 1` reads as `x = 1`. The keyword sits in the
+`VariableDeclarationList`'s own range, so `rubyVariables` claims the
+list and joins its declarations; the statement around it stays with the
+fallback, which keeps an `export` or `declare` and drops the `;`, and a
+`for (const x of xs)` reads as `for (x of xs)` by the same claim. Which
+keyword it was is in the node as written, on hover.
 
 ### Fields and the receiver
 

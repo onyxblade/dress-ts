@@ -56,7 +56,7 @@ src/core/          building blocks shared by every theme
                    it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`, `return 0 if x`,
-                   `Foo.new(a)`, `Set[string]`, `self` and `@x`, no line-ending `;`
+                   `Foo.new(a)`, `Set[string]`, `self` and `@x`, `x = 1` with no `const`, no line-ending `;`
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
