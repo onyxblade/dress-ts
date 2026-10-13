@@ -1,8 +1,9 @@
 # The TypeScript theme
 
-TypeScript laid out from its AST, with imports moved to hover and supported
-switches read as independent arms. An opt-in ESLint rule enforces the same
-switch contract that the renderer checks.
+TypeScript laid out from its AST, with imports moved to hover, supported
+switches read as independent arms, and strict comparisons shortened in files
+without loose equality. An opt-in ESLint preset enforces the reading contracts;
+the renderer also checks the source independently.
 
 Choose `typescript` in either demo pane, or open
 `?file=lru.ts&left=source&right=typescript` to compare it with the source.
@@ -23,7 +24,8 @@ also owns the layout of declarations and control flow.
 | `loop.tsx` | `while`, `do`, three-clause `for`, `for in`, `for of`, and `for await of` |
 | `switch.tsx` | Independent switch arms, with ordinary TS layout for unsupported switches |
 | `switchAnalysis.ts` | The switch contract shared by the theme and lint rule |
-| `eslint.ts` | The opt-in `dress/switch-reading` rule and flat config |
+| `equality.tsx` | Shortened strict comparisons, guarded by a scan of the entire source file |
+| `eslint.ts` | The opt-in `dress/switch-reading` rule, `eqeqeq`, and flat configs |
 | `try.tsx` | Try, catch with or without a binding, and finally |
 | `enum.tsx` | Enums, member initializers, and comma separators |
 | Core `Verbatim` | Everything else, with semantic children still dispatched through the theme |
@@ -41,7 +43,7 @@ function f(x: number) { if (x === 0) { return 1; } return x; }
 
 // TypeScript theme
 function f(x: number) {
-  if (x === 0) {
+  if (x == 0) {
     return 1;
   }
   return x;
@@ -80,6 +82,40 @@ does not disappear with the first import. Dynamic `import()` expressions,
 stay in the code. Hiding declarations is a reading decision: the displayed
 text is no longer a standalone, equivalent TypeScript program. The program
 and checker still use the original, unchanged AST.
+
+## Strict equality reading
+
+When a source file contains no native `==` or `!=` operators, the theme reads
+`===` as `==` and `!==` as `!=`, including comparisons with `null` and
+`undefined`. These displayed operators retain strict TypeScript semantics.
+Hover an operator to see the reading and its original spelling.
+
+```ts
+// Source (a file with no loose equality)
+a === b && c !== d
+```
+
+```text
+// TypeScript theme
+a == b && c != d
+```
+
+If even one native `==` or `!=` occurs anywhere in the file, every comparison
+in that file keeps its original spelling. This includes strict operators
+before the loose comparison, inside other functions, and in nested bodies.
+For example, a file containing `a === b; c != d;` displays both unchanged.
+Imports, switch readings, and the rest of the theme continue to work.
+
+The guard walks the original semantic AST once per source-file object and
+caches the result without changing the tree. Comments, string and regex
+literals, and template text cannot trigger it; actual comparisons inside
+template expressions can. It does not assume lint has run or respect lint
+disable comments, so unfamiliar files still have unambiguous comparisons.
+
+The combined lint preset enables ESLint's built-in
+`eqeqeq: ['error', 'always', { null: 'always' }]`. There are no `smart` or
+null exceptions. Lint checks the original TS; the shortened display is a
+reading, not source to compile or lint.
 
 ## Switch reading
 
@@ -146,8 +182,9 @@ source AST is never changed.
 
 ### ESLint
 
-`eslint.ts` exports a plugin with `dress/switch-reading` and
-`switchReadingConfig`, a flat config including `@typescript-eslint/parser`.
+`eslint.ts` exports a plugin with `dress/switch-reading`, a switch-only
+`switchReadingConfig`, and the combined `typescriptReadingConfig` that also
+enables `eqeqeq`. Both flat configs include `@typescript-eslint/parser`.
 It uses parser node maps to call the same `analyzeSwitch()` function as the
 theme, with no type-aware project setup. Each failure points at the
 unsupported label, declaration, break, or case group. Intentional
@@ -158,9 +195,9 @@ This repository opts the demo samples into the contract:
 
 ```js
 // eslint.config.mjs (Node 26 loads the .ts module directly)
-import { switchReadingConfig } from './src/themes/typescript/eslint.ts'
+import { typescriptReadingConfig } from './src/themes/typescript/eslint.ts'
 
-export default [{ ...switchReadingConfig, files: ['src/samples/**/*.ts'] }]
+export default [{ ...typescriptReadingConfig, files: ['src/samples/**/*.ts'] }]
 ```
 
 Run `pnpm lint`; CI runs it as well. Change `files` to opt in a different
@@ -171,9 +208,9 @@ it or require the corresponding plugin.
 
 ## What stays visible
 
-Outside the import and switch readings, keywords, modifiers, decorators, types, generic arguments
+Outside the import, switch, and equality readings, keywords, modifiers, decorators, types, generic arguments
 and constraints, receivers, operators, and jumps retain their TypeScript
-meaning and spelling. `const` and `let`, `===` and `==`, `of` and `in`,
+meaning and spelling. `const` and `let`, `of` and `in`,
 `return` and a final expression remain distinct. Unsupported switches keep
 their separate labels, breaks, and fallthrough in ordinary TS form.
 Standalone blocks keep their braces and scope.
@@ -201,7 +238,8 @@ to the blocks themselves are kept as well as the comments inside them.
 
 `test/layout.test.tsx` checks visible layout, fallback, identity, and
 semantic roles. `test/preservation.test.tsx` renders all demo samples and
-additional syntax/comment cases with switches expanded, reparses the result, and checks syntax
+additional syntax/comment cases with the switch and equality readings disabled,
+reparses the result, and checks syntax
 structure (excluding omitted file imports), literal values, declaration
 kinds, and the ordered comments.
 The full theme is checked for missing, duplicated, or reordered comments.
@@ -211,3 +249,6 @@ node identity, and the absence of unsafe autofixes. The original AST is
 never modified. `test/imports.test.tsx` covers omitted declarations,
 retained comments, fallback behavior, and the header entry point; core's
 import tests cover symbol lookup and the hover content.
+`test/equality.test.tsx` checks the whole-file guard, nested expressions,
+comments and literal text, hover identity, independent files, and the combined
+lint preset, including the absence of null exceptions and lint-disable fallback.

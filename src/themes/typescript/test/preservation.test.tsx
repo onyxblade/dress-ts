@@ -4,6 +4,7 @@ import { allComments, childNodes, isStaticImport } from '../../../core'
 import { htmlToText, lostComments, programFor, renderHtml, renderText, samples } from '../../../core/testing'
 import { typescript } from '..'
 import { typescriptSwitchLayout } from '../switch'
+import { typescriptEquality } from '../equality'
 
 const examples = [
   ...samples(),
@@ -45,9 +46,9 @@ function shape(node: ts.Node): unknown {
 
 describe('typescript preservation', () => {
   it.each(examples.map((source, i) => ({ source, name: `example ${i + 1}` })))('keeps syntax and comments in $name', ({ source }) => {
-    // Switch arms are a reading, not executable TS. Check the other layout
-    // decisions with switches expanded; check comments with the full theme.
-    const shown = renderText(source, [typescriptSwitchLayout, ...typescript.transforms])
+    // Check formatting with the switch and equality readings disabled;
+    // their displayed forms do not have the original executable TS semantics.
+    const shown = renderText(source, [typescriptSwitchLayout, ...typescript.transforms.filter((transform) => transform !== typescriptEquality)])
     const original = programFor(source)
     const rendered = programFor(shown)
     expect(original.getSyntacticDiagnostics()).toEqual([])

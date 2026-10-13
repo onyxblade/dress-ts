@@ -5,9 +5,9 @@ import { typescript } from '..'
 const show = (text: string) => renderText(text, typescript.transforms)
 
 describe('typescript layout', () => {
-  it('lays out functions and branches without removing syntax', () => {
+  it('lays out functions and branches with shortened strict equality', () => {
     expect(show('export function f(x: number): number { if (x === 0) { return 1; } else { return x; } }')).toBe(
-      'export function f(x: number): number {\n  if (x === 0) {\n    return 1;\n  } else {\n    return x;\n  }\n}\n',
+      'export function f(x: number): number {\n  if (x == 0) {\n    return 1;\n  } else {\n    return x;\n  }\n}\n',
     )
   })
 

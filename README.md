@@ -60,7 +60,7 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
                    `while x ... end`, `for x of xs ... end`, `case x when a, b ... end`, `begin ... rescue => e ... end`, `enum E ... end`, `Foo.new(a)`, `Set[string]`, `self` and `@x`, `constructor(@x: T)`, no `const`, no `private`, no line-ending `;`
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
-  typescript/      TypeScript layout with imports on hover and independent switch arms, guarded by a shared ESLint contract
+  typescript/      TypeScript layout with imports on hover, independent switch arms, and shortened strict equality, paired with ESLint contracts
   typescript/README.md its layout rules, preserved syntax, fallback coverage, and tests
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/samples/       the programs the demo page shows, each small and real: a directory walker, an LRU cache, an
@@ -305,7 +305,7 @@ one line) are a container's job: `Lines` is where grouping would go.
 pnpm dev        # a sample side by side; ?file=calc.ts&left=source&right=ruby picks the file and the views
 pnpm test       # vitest
 pnpm typecheck  # tsc
-pnpm lint       # opt-in TypeScript switch reading contract for the demo samples
+pnpm lint       # opt-in TypeScript reading contracts for the demo samples
 ```
 
 The same page is published at https://onyxblade.github.io/dress-ts/ by

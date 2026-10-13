@@ -8,6 +8,7 @@ import { typescriptDoWhile, typescriptFor, typescriptForEach, typescriptWhile } 
 import { typescriptCase, typescriptCaseBlock, typescriptSwitch } from './switch'
 import { typescriptCatch, typescriptTry } from './try'
 import { typescriptEnum, typescriptEnumMember } from './enum'
+import { typescriptEquality } from './equality'
 
 /** TypeScript laid out for reading, with top-level imports available on hover. */
 export const typescript: Theme = {
@@ -30,6 +31,7 @@ export const typescript: Theme = {
     typescriptEnum,
     typescriptEnumMember,
     typescriptBlock,
+    typescriptEquality,
     semanticIdentifiers,
     () => () => Verbatim,
   ],

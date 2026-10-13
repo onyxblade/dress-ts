@@ -1,5 +1,5 @@
 import * as parser from '@typescript-eslint/parser'
-import { ESLintUtils } from '@typescript-eslint/utils'
+import { ESLintUtils, type TSESLint } from '@typescript-eslint/utils'
 import { analyzeSwitch, switchIssues } from './switchAnalysis.ts'
 
 const switchReading = ESLintUtils.RuleCreator(() =>
@@ -39,6 +39,16 @@ export const switchReadingConfig = {
   languageOptions: { parser },
   plugins: { dress: plugin },
   rules: { 'dress/switch-reading': 'error' as const },
+}
+
+/** The theme's complete opt-in contract; the renderer also checks each reading. */
+export const typescriptReadingConfig: TSESLint.FlatConfig.Config = {
+  ...switchReadingConfig,
+  name: 'dress/typescript-reading',
+  rules: {
+    ...switchReadingConfig.rules,
+    eqeqeq: ['error', 'always', { null: 'always' }],
+  },
 }
 
 export default plugin
