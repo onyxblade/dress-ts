@@ -124,6 +124,7 @@ export function evaluate(expr: Expr): number {
         case '/':
           return l / r
       }
+      throw new Error(`unreachable: ${JSON.stringify(expr)}`)
     }
     default:
       return unreachable(expr)

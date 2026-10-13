@@ -1,8 +1,8 @@
 # The TypeScript theme
 
-TypeScript's syntax, laid out from its AST, with imports moved to hover.
-The first subtraction removes top-level import declarations from the code
-while keeping their information available at use sites and in the header.
+TypeScript laid out from its AST, with imports moved to hover and supported
+switches read as independent arms. An opt-in ESLint rule enforces the same
+switch contract that the renderer checks.
 
 Choose `typescript` in either demo pane, or open
 `?file=lru.ts&left=source&right=typescript` to compare it with the source.
@@ -21,7 +21,9 @@ also owns the layout of declarations and control flow.
 | `class.tsx` | Classes, class expressions, and interfaces, including modifiers and heritage clauses |
 | `if.tsx` | Conditions, braced or braceless branches, and `else if` chains |
 | `loop.tsx` | `while`, `do`, three-clause `for`, `for in`, `for of`, and `for await of` |
-| `switch.tsx` | Switch bodies and individual case/default clauses |
+| `switch.tsx` | Independent switch arms, with ordinary TS layout for unsupported switches |
+| `switchAnalysis.ts` | The switch contract shared by the theme and lint rule |
+| `eslint.ts` | The opt-in `dress/switch-reading` rule and flat config |
 | `try.tsx` | Try, catch with or without a binding, and finally |
 | `enum.tsx` | Enums, member initializers, and comma separators |
 | Core `Verbatim` | Everything else, with semantic children still dispatched through the theme |
@@ -79,13 +81,101 @@ stay in the code. Hiding declarations is a reading decision: the displayed
 text is no longer a standalone, equivalent TypeScript program. The program
 and checker still use the original, unchanged AST.
 
+## Switch reading
+
+Supported switches keep `switch` and `default`, combine adjacent empty
+labels with `|`, replace `case ...:` with `... =>`, and omit a final
+unlabelled `break` that exits that switch. A short, uncommented body fits
+on the label's line; other bodies use braces. A sole source block uses the
+arm's braces, keeping its scope without adding another indentation level.
+
+```ts
+// Source
+switch (token.kind) {
+  case 'space':
+  case 'newline':
+    skip()
+    break
+  case 'number': {
+    const value = parse(token)
+    return value
+  }
+  default:
+    throw new Error('unexpected token')
+}
+```
+
+```text
+switch (token.kind) {
+  'space' | 'newline' => skip()
+  'number' => {
+    const value = parse(token)
+    return value
+  }
+  default => throw new Error('unexpected token')
+}
+```
+
+These are statement arms: `return`, `throw`, and `continue` stay explicit.
+There is no implicit return value and no promise of exhaustiveness. If no
+label matches and there is no default, execution continues after the switch.
+Hover the switch header or an arm's `=>` to see the reading and source.
+Comments on labels, blocks, and omitted breaks remain visible in order.
+
+The first contract is deliberately syntactic:
+
+- Labels must be string, number, bigint, boolean, or null literals, including
+  constant templates, signed numbers, and parenthesized literals. Names,
+  enum members, calls, property accesses, and other expressions use fallback.
+- A `default` must be last and cannot share a body with preceding empty labels.
+- Declarations directly in a case must be wrapped in a block. This also
+  includes `var` and type declarations; `var` retains its TS function scope.
+- Each nonfinal group must end in an explicit exit: `break`, `return`,
+  `throw`, `continue`, a block ending in an exit, or an `if` whose two branches
+  exit. This is a conservative proof, not a complete control-flow analysis.
+  A nested switch or a call returning `never` is not itself proof of exit.
+- Only a top-level final unlabelled break, or the final break inside a sole
+  case block, can be hidden. Earlier breaks of this switch and labelled
+  breaks are rejected. Breaks of nested loops or switches are left to those
+  constructs; nested functions are analyzed independently.
+
+If any condition fails, that whole switch keeps its ordinary TS labels and
+jumps. Nested switches can still simplify independently. Rendering always
+checks the contract, even when lint has not run or has been disabled. The
+source AST is never changed.
+
+### ESLint
+
+`eslint.ts` exports a plugin with `dress/switch-reading` and
+`switchReadingConfig`, a flat config including `@typescript-eslint/parser`.
+It uses parser node maps to call the same `analyzeSwitch()` function as the
+theme, with no type-aware project setup. Each failure points at the
+unsupported label, declaration, break, or case group. Intentional
+`falls through` comments do not exempt a branch. There is no autofix:
+inserting a break into intentional fallthrough would change the program.
+
+This repository opts the demo samples into the contract:
+
+```js
+// eslint.config.mjs (Node 26 loads the .ts module directly)
+import { switchReadingConfig } from './src/themes/typescript/eslint.ts'
+
+export default [{ ...switchReadingConfig, files: ['src/samples/**/*.ts'] }]
+```
+
+Run `pnpm lint`; CI runs it as well. Change `files` to opt in a different
+set of files. The renderer and other themes can continue accepting arbitrary
+TS. Exhaustiveness checking can be configured separately with
+`@typescript-eslint/switch-exhaustiveness-check`; this preset does not enable
+it or require the corresponding plugin.
+
 ## What stays visible
 
-Outside those import declarations, keywords, modifiers, decorators, types, generic arguments
+Outside the import and switch readings, keywords, modifiers, decorators, types, generic arguments
 and constraints, receivers, operators, and jumps retain their TypeScript
 meaning and spelling. `const` and `let`, `===` and `==`, `of` and `in`,
-`return` and a final expression remain distinct. Switch labels stay
-separate; breaks and fallthrough retain their ordinary TS representation.
+`return` and a final expression remain distinct. Unsupported switches keep
+their separate labels, breaks, and fallthrough in ordinary TS form.
 Standalone blocks keep their braces and scope.
 
 Expressions, variable and field declarations, exports, type
@@ -111,10 +201,13 @@ to the blocks themselves are kept as well as the comments inside them.
 
 `test/layout.test.tsx` checks visible layout, fallback, identity, and
 semantic roles. `test/preservation.test.tsx` renders all demo samples and
-additional syntax/comment cases, reparses the result, and checks syntax
+additional syntax/comment cases with switches expanded, reparses the result, and checks syntax
 structure (excluding omitted file imports), literal values, declaration
 kinds, and the ordered comments.
-It also checks `lostComments()` for missing comments. The original AST is
+The full theme is checked for missing, duplicated, or reordered comments.
+`test/switch.test.tsx` checks the shared contract against both rendering and
+ESLint, precise diagnostics, fallback, nested control flow, scope, comments,
+node identity, and the absence of unsafe autofixes. The original AST is
 never modified. `test/imports.test.tsx` covers omitted declarations,
 retained comments, fallback behavior, and the header entry point; core's
 import tests cover symbol lookup and the hover content.

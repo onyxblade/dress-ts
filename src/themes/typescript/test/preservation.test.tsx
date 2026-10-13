@@ -1,8 +1,9 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { allComments, childNodes, isStaticImport } from '../../../core'
-import { lostComments, programFor, renderText, samples } from '../../../core/testing'
+import { htmlToText, lostComments, programFor, renderHtml, renderText, samples } from '../../../core/testing'
 import { typescript } from '..'
+import { typescriptSwitchLayout } from '../switch'
 
 const examples = [
   ...samples(),
@@ -44,14 +45,17 @@ function shape(node: ts.Node): unknown {
 
 describe('typescript preservation', () => {
   it.each(examples.map((source, i) => ({ source, name: `example ${i + 1}` })))('keeps syntax and comments in $name', ({ source }) => {
-    const shown = renderText(source, typescript.transforms)
+    // Switch arms are a reading, not executable TS. Check the other layout
+    // decisions with switches expanded; check comments with the full theme.
+    const shown = renderText(source, [typescriptSwitchLayout, ...typescript.transforms])
     const original = programFor(source)
     const rendered = programFor(shown)
     expect(original.getSyntacticDiagnostics()).toEqual([])
     expect(rendered.getSyntacticDiagnostics()).toEqual([])
     expect(shape(rendered.getSourceFile('x.ts')!)).toEqual(shape(original.getSourceFile('x.ts')!))
     expect(lostComments(source, typescript.transforms)).toEqual([])
-    const comments = (text: string) => allComments(ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true)).map((c) => c.text)
-    expect(comments(shown)).toEqual(comments(source))
+    const html = renderHtml(source, typescript.transforms)
+    const comments = [...html.matchAll(/<span class="comment">([\s\S]*?)<\/span>/g)].map((match) => htmlToText(match[1]))
+    expect(comments).toEqual(allComments(original.getSourceFile('x.ts')!).map((c) => c.text))
   })
 })
