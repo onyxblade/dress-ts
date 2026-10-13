@@ -232,7 +232,7 @@ nobody has designed yet.
 ## Tests
 
 `test/` holds one file per component or rule, plus `comments.test.tsx`,
-which renders the sample and the theme's own inputs through the whole
+which renders the samples and the theme's own inputs through the whole
 theme and asserts `lostComments()` is empty. A test renders with the
 transforms it is about and the fallback, `renderText(text, [rubyField,
 rubyFallback])`, so the expected text shows only that reading.

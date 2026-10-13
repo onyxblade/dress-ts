@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
 import ts from 'typescript'
 import { Verbatim, claim, type Edit, type NodeProps } from '../../src/core'
-import { renderHtml, renderText } from '../../src/core/testing'
+import { renderHtml, renderText, samples } from '../../src/core/testing'
 
 describe('Verbatim', () => {
-  it('reproduces the sample file verbatim', () => {
-    const text = readFileSync(new URL('../../src/sample.ts', import.meta.url), 'utf8')
-    expect(renderText(text)).toBe(text)
+  it('reproduces every sample verbatim', () => {
+    for (const text of samples()) expect(renderText(text)).toBe(text)
   })
 
   it('reproduces tricky syntax verbatim', () => {

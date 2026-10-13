@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { render } from 'preact-render-to-string'
@@ -16,6 +16,11 @@ export const nodeLibs: LibSource = (name) => {
 }
 
 const FILE = 'x.ts'
+
+const samplesDir = new URL('../samples/', import.meta.url)
+
+/** The text of every file in `src/samples/`, the programs the demo page shows, for a test over all of them. */
+export const samples = (): string[] => readdirSync(samplesDir).sort().map((name) => readFileSync(new URL(name, samplesDir), 'utf8'))
 
 /** A program over one file of source text, as the tests see it. */
 export function programFor(text: string): ts.Program {

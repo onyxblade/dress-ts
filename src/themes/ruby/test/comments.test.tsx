@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { lostComments, renderText } from '../../../core/testing'
+import { lostComments, renderText, samples } from '../../../core/testing'
 import { ruby } from '..'
 
 const show = (text: string) => renderText(text, ruby.transforms)
@@ -47,7 +46,7 @@ describe('ruby theme keeps comments', () => {
     expect(show('function f(a, /* b */ b) {}')).toBe('def f(a /* b */, b)\nend\n')
   })
 
-  it('loses nothing from the sample', () => {
-    expect(lostComments(readFileSync(new URL('../../../sample.ts', import.meta.url), 'utf8'), ruby.transforms)).toEqual([])
+  it('loses nothing from the samples', () => {
+    for (const text of samples()) expect(lostComments(text, ruby.transforms)).toEqual([])
   })
 })

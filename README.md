@@ -60,12 +60,14 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
-src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
+src/samples/       the programs the demo page shows, each small and real: a directory walker, an LRU cache, an
+                   arithmetic calculator, a state machine; a new file here is a new entry in the page's menu
+src/app.tsx        demo page: one of the samples twice, side by side, each pane choosing a view; the two views that are
                    not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
                    hovering a node on one side marks the same node on the other, by nodeId, and shows a card
                    at once: the quick info of the token under the pointer, or the reading that node is shown
                    in and the node as written; a click pins the card, Escape lets it go
-src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
+src/main.tsx       bundle the lib files, build a program over the samples, mount the page
 test/core/         tests for the core building blocks
 ```
 
@@ -203,7 +205,7 @@ What a designed component can still get wrong is skipping a node (rendering
 its grandchildren directly, so nobody renders the comments attached to the
 child) or leaving out `within`. `lostComments()` in `testing.tsx` lists the
 comments of a source that its rendering does not show, and each theme's
-tests assert it is empty over the sample and over its own inputs. A
+tests assert it is empty over the samples and over its own inputs. A
 component that does skip a node, as the Ruby theme's `if` does with its
 branch blocks and its `@x` with the `this`, emits that node's comments
 itself, with `CommentText`, at the nearest place it writes.
@@ -235,7 +237,7 @@ per test costs a few milliseconds. `createCtx(program, fileName, resolve)`
 takes the file from the program, since the checker only knows the nodes it
 bound.
 
-Imports the program cannot see (`node:fs` in the sample) are diagnostics,
+Imports the program cannot see (`node:fs` in the walker sample) are diagnostics,
 and what they bring in is typed `any`. The checker answers everything else
 around them, so a component treats `any` as "unknown", never as a fact.
 
@@ -289,7 +291,7 @@ one line) are a container's job: `Lines` is where grouping would go.
 ## Commands
 
 ```
-pnpm dev        # sample.ts side by side; ?left=source&right=ruby picks the views
+pnpm dev        # a sample side by side; ?file=calc.ts&left=source&right=ruby picks the file and the views
 pnpm test       # vitest
 pnpm typecheck  # tsc
 ```

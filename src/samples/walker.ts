@@ -1,5 +1,6 @@
 /**
- * A small but syntactically varied sample used to exercise the renderer.
+ * A directory walker: an interface, a generic class with an async generator
+ * method, a guard-heavy function, an arrow function. Small but varied.
  */
 import { readFile } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'

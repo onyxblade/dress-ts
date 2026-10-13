@@ -34,14 +34,25 @@ const views: View[] = [
 
 const viewNamed = (name: string | null, fallback: View) => views.find((v) => v.name === name) ?? fallback
 
-/** Which view each side shows lives in the URL, so a comparison is a link. */
-function readSides(): [View, View] {
-  const params = new URLSearchParams(location.search)
-  return [viewNamed(params.get('left'), views[0]), viewNamed(params.get('right'), views[views.length - 1])]
+/** What the page shows: a file, and a view on each side. It lives in the URL, so a comparison is a link. */
+interface Choice {
+  file: string
+  left: View
+  right: View
 }
 
-function writeSides(left: View, right: View) {
-  const params = new URLSearchParams({ left: left.name, right: right.name })
+function readChoice(fileNames: string[]): Choice {
+  const params = new URLSearchParams(location.search)
+  const file = params.get('file')
+  return {
+    file: file && fileNames.includes(file) ? file : fileNames[0],
+    left: viewNamed(params.get('left'), views[0]),
+    right: viewNamed(params.get('right'), views[views.length - 1]),
+  }
+}
+
+function writeChoice({ file, left, right }: Choice) {
+  const params = new URLSearchParams({ file, left: left.name, right: right.name })
   history.replaceState(null, '', `?${params}`)
 }
 
@@ -189,28 +200,38 @@ function Hover({ root, service, fileName }: { root: { current: HTMLElement | nul
   )
 }
 
-/** One file, two readings side by side. Each side picks its view. */
-export function App({ service, fileName }: { service: ts.LanguageService; fileName: string }) {
+/** One of the files, two readings side by side. Each side picks its view; the bar above picks the file. */
+export function App({ service, fileNames }: { service: ts.LanguageService; fileNames: string[] }) {
   const program = service.getProgram()!
-  const [sides, setSides] = useState(readSides)
-  const [left, right] = sides
-  const set = (next: [View, View]) => {
-    writeSides(...next)
-    setSides(next)
+  const [choice, setChoice] = useState(() => readChoice(fileNames))
+  const { file, left, right } = choice
+  const set = (next: Partial<Choice>) => {
+    const whole = { ...choice, ...next }
+    writeChoice(whole)
+    setChoice(whole)
   }
   const main = useRef<HTMLElement>(null)
   return (
     <>
+      <nav class="files">
+        <select value={file} onChange={(e) => set({ file: e.currentTarget.value })}>
+          {fileNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </nav>
       <main
         ref={main}
         class="compare"
         onMouseOver={(e) => markPeers(e.currentTarget, e.target)}
         onMouseLeave={(e) => markPeers(e.currentTarget, null)}
       >
-        <Pane program={program} fileName={fileName} view={left} onChange={(v) => set([v, right])} />
-        <Pane program={program} fileName={fileName} view={right} onChange={(v) => set([left, v])} />
+        <Pane program={program} fileName={file} view={left} onChange={(v) => set({ left: v })} />
+        <Pane program={program} fileName={file} view={right} onChange={(v) => set({ right: v })} />
       </main>
-      <Hover root={main} service={service} fileName={fileName} />
+      <Hover root={main} service={service} fileName={file} />
     </>
   )
 }

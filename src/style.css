@@ -11,6 +11,13 @@ body {
   margin: 0;
   white-space: pre;
 }
+/* The file both panes show (see app.tsx App). */
+.files {
+  margin-bottom: 1rem;
+}
+.files select {
+  font: inherit;
+}
 /* Two readings of one file, each pane scrolling on its own. */
 .compare {
   display: grid;
