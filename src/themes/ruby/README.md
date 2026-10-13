@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -30,6 +30,7 @@ The order is outermost first. The designed components claim their kinds;
 | `field.tsx` | `private readonly x = v` | `@x = v` |
 | `this.tsx` | `this.x` on a field | `@x` |
 | `this.tsx` | `this` | `self` |
+| `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
 | `generics.tsx` | `Set<string>`, `type Pair<T>`, `f<T>(x)` | `Set[string]`, `type Pair[T]`, `f[T](x)` |
 | `semicolon.tsx` | `f();` at the end of a line | `f()` |
 
@@ -82,9 +83,8 @@ keyword it was is in the node as written, on hover.
 
 `this` reads as `self`. A field of the receiver is an instance variable:
 `this.seen` reads as `@seen`, and its declaration `private readonly seen
-= new Set()` as `@seen = Set.new()`. The `@` says what `private` said,
-that the variable is the object's own; `readonly` has no word in Ruby and
-is left out.
+= new Set()` as `@seen = Set.new()`, the modifiers left out as everywhere
+(see Modifiers) and the `@` saying the variable is the object's own.
 
 Whether `this.x` is a field is the checker's answer, not the syntax's:
 `rubyInstanceVariable`'s guard asks `ctx.checker` for the symbol of `x`
@@ -99,12 +99,33 @@ Left as written on purpose, because `@x` would hide what they say:
 - `this?.x` and `this.#p`, and a `#p = 1` declaration. Ruby's instance
   variables are private already, so `@p` would read well, but it would
   collide with a `this.p` in the same class.
-- A field with a `public`, `protected`, `static`, `abstract`, `declare`
-  or `accessor` modifier, a decorated one, and a computed or string name.
-  A `static x` could read as `@@x` later.
+- A field with a `static`, `abstract`, `declare` or `accessor` modifier,
+  a decorated one, and a computed or string name. A `static x` could read
+  as `@@x` later.
 
-The `this` and the modifiers are not rendered, so a comment attached to
-one, `this./* c */x` or `private /* c */ x`, goes before the `@`.
+The `this` is not rendered, so a comment attached to it, `this./* c */x`,
+goes before the `@`.
+
+### Modifiers
+
+Ruby says visibility apart from the method, `private` on a line of its
+own, and has no `readonly`, so `public`, `private`, `protected` and
+`readonly` are noise: `private readonly x = v` reads as `@x = v`,
+`public m()` as `def m()`, `constructor(public readonly o: T)` as
+`constructor(o: T)`, an interface's `readonly root: string` as `root:
+string`. Which modifiers a declaration had is in the node as written, on
+hover. `static`, `abstract`, `override`, `async`, `export` and the rest
+say something a reader wants in the text and stay; so does the `readonly`
+of a type, `readonly string[]`, which is an operator, not a modifier.
+
+A designed component writes its modifiers through `Modifiers`, which
+skips the noise and keeps the comments attached to it. A node shown
+verbatim has the modifier as a child node, which no edit can reach, so
+the reading is in two parts that go together: `rubyModifier` claims the
+modifier itself and renders nothing, and the fallback rule
+`droppedModifiers` drops the space that followed it, the only part in
+the parent's gap text. A transform list with the fallback but without
+`rubyModifier` would drop the space and keep the word.
 
 ### Generics
 
@@ -123,7 +144,7 @@ replacements of source ranges in the text between children, which is the
 text no child's component owns. Each edit is a rule answering for one
 node, and the one fallback applies every rule, since a node can need
 several at once (`type Pair<T> = [T, T];` loses its `;` and respells its
-`<T>`):
+`<T>`, `readonly x: T;` loses two words):
 
 - `closingSemicolon` drops a `;` that closes the line, since Ruby ends a
   statement with the line. Whether it closes a line is a layout question,
@@ -132,6 +153,8 @@ several at once (`type Pair<T> = [T, T];` loses its `;` and respells its
   comment follows it in the source. The `;` between the members of a
   one-line type literal is neither and stays, since there it separates
   rather than terminates.
+- `droppedModifiers` drops the space after a noise modifier, see
+  Modifiers; the modifier itself is `rubyModifier`'s.
 - `squareTypeLists` swaps the two delimiters of each type parameter or
   argument list the node carries. The parser leaves a list's range
   between its delimiters, so the `<` before it and the `>` after it sit

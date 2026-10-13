@@ -1,6 +1,7 @@
 import ts from 'typescript'
 import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../core'
 import { TypeList } from './generics'
+import { Modifiers } from './modifiers'
 
 /** Function declarations, function expressions and class methods share the `def` shape. */
 export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration
@@ -21,11 +22,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
   return (
     <>
       <span class="header">
-        {node.modifiers?.map((m) => (
-          <>
-            <Render key={m.pos} node={m} ctx={ctx} />{' '}
-          </>
-        ))}
+        <Modifiers nodes={node.modifiers} ctx={ctx} />
         def {node.asteriskToken && '*'}
         {node.name && <Render node={node.name} ctx={ctx} />}
         {node.questionToken && '?'}

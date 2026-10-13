@@ -1,17 +1,14 @@
 import ts from 'typescript'
 import { Indent, Line, Lines, Render, claim, type NodeProps } from '../../core'
 import { TypeList } from './generics'
+import { Modifiers } from './modifiers'
 
 /** A class laid out from its fields: header line, members in an Indent, `end`. */
 export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration>) {
   return (
     <>
       <span class="header">
-        {node.modifiers?.map((m) => (
-          <>
-            <Render key={m.pos} node={m} ctx={ctx} />{' '}
-          </>
-        ))}
+        <Modifiers nodes={node.modifiers} ctx={ctx} />
         class{node.name && <> <Render node={node.name} ctx={ctx} /></>}
         <TypeList nodes={node.typeParameters} ctx={ctx} />
         {node.heritageClauses?.map((h) => (

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { lostComments, renderHtml, renderText } from '../../../core/testing'
 import { rubyInstanceVariable, rubyThis } from '../this'
+import { rubyModifier } from '../modifiers'
 import { rubyFallback } from '../fallback'
 
-const show = (text: string) => renderText(text, [rubyInstanceVariable, rubyThis, rubyFallback])
+const show = (text: string) => renderText(text, [rubyInstanceVariable, rubyThis, rubyModifier, rubyFallback])
 
 const cls = (body: string) => `class A {\n  x = 1\n  get size() { return 0 }\n  m() {\n    ${body}\n  }\n}`
 
@@ -28,7 +29,7 @@ describe('rubyInstanceVariable', () => {
 
   it('reads a parameter property as a field', () => {
     const src = 'class A {\n  constructor(public readonly o: object) {}\n  m() { return this.o }\n}'
-    expect(show(src)).toBe(src.replace('this.o', '@o'))
+    expect(show(src)).toBe(src.replace('this.o', '@o').replace('public readonly ', ''))
   })
 
   it('keeps a method or an accessor on self, since @m() is not a call', () => {

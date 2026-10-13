@@ -22,12 +22,14 @@ describe('rubyField', () => {
     expect(show(cls('private x: number = 1'))).toBe(cls('@x: number = 1'))
   })
 
+  it('reads a public or protected field the same way', () => {
+    expect(show(cls('public x = 1'))).toBe(cls('@x = 1'))
+    expect(show(cls('protected readonly x = 1'))).toBe(cls('@x = 1'))
+  })
+
   it('leaves a field with any other modifier, a #private or a computed name as written', () => {
     for (const member of [
-      'public x = 1',
-      'protected x = 1',
       'static x = 1',
-      'private static x = 1',
       'declare x: number',
       'abstract x: number',
       'accessor x = 1',
