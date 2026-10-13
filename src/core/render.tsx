@@ -1,5 +1,6 @@
 import type ts from 'typescript'
-import type { Ctx, NodeProps, Resolve, Transform } from './types'
+import type { ComponentType } from 'preact'
+import type { Ctx, NodeComponent, NodeProps, Resolve, Transform } from './types'
 
 /** Dispatch: ask ctx.resolve which component should render this node. */
 export function Render({ node, ctx }: NodeProps) {
@@ -26,4 +27,15 @@ export function createCtx(sourceFile: ts.SourceFile, resolve: Resolve): Ctx {
  */
 export function withTransforms(ctx: Ctx, transforms: Transform[]): Ctx {
   return { ...ctx, resolve: compose(ctx.resolve, transforms) }
+}
+
+/**
+ * The common transform: nodes matching a type guard are rendered by a
+ * component typed for that node. Everything else falls through.
+ */
+export function claim<N extends ts.Node>(
+  is: (node: ts.Node) => node is N,
+  Component: ComponentType<NodeProps<N>>,
+): Transform {
+  return (next) => (node, ctx) => (is(node) ? (Component as NodeComponent) : next(node, ctx))
 }

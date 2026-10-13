@@ -5,8 +5,8 @@ import type { ComponentType } from 'preact'
  * Props every node component receives: the AST node it is responsible for,
  * plus the shared rendering context. The node is never mutated.
  */
-export interface NodeProps {
-  node: ts.Node
+export interface NodeProps<N extends ts.Node = ts.Node> {
+  node: N
   ctx: Ctx
 }
 

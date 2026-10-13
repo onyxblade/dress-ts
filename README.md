@@ -12,9 +12,17 @@ build their own variant.
 
 - One-way AST -> HTML only. Rendering never mutates the AST. The AST comes
   from the official `typescript` compiler API.
+- Components render from the **semantic** AST: a node's fields (`name`,
+  `parameters`, `body`), never its tokens. `function`, `(`, `{` are not in
+  the semantic tree, and a component that wants a keyword or a bracket
+  writes it out itself. This keeps the door open to renderings that are not
+  text at all.
+- Layout is HTML structure plus CSS, not preserved whitespace. A line is a
+  block, an indent is padding. Designed components discard the original
+  line breaks; what a reader sees is the component's decision.
 - No separate intermediate presentation tree. The UI component tree *is* the
   presentation tree: each component receives one `ts.Node`, decides how to
-  draw itself, and chooses which children to hand to whom.
+  draw itself, and dispatches the children it does not care about.
 - The single extension point is `resolve(node, ctx) => Component`. A
   transform is middleware wrapped around `resolve`: it can claim a node by
   returning its own component, or defer to the next layer.
@@ -23,19 +31,19 @@ build their own variant.
 
 ```
 src/core/          building blocks shared by every theme
-  testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
-  types.ts         NodeProps / Ctx / Resolve / Transform / Theme
+  types.ts         NodeProps<N> / Ctx / Resolve / Transform / Theme
   render.tsx       <Render> dispatches to a component; compose() stacks transforms on a base resolver;
-                   withTransforms() scopes extra transforms to one component's subtree
-  splice.tsx       spliceChildren(node, ctx, pick?): the text-splicing building block, where `pick` lets
-                   a parent choose the component for specific direct children; NodeSpan: the kind-tagged
-                   span; Splice: default component, with no transforms the output equals the input verbatim
-  token.tsx        replaceToken(): render a token as different text; OmitToken: render a token as nothing
+                   claim(guard, Component) is the usual transform; withTransforms() scopes transforms
+                   to one component's subtree
+  verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan
+  layout.tsx       Line, Indent, Join, Lines: the layout vocabulary
+  comments.ts      leadingComments() / trailingComments(), since the semantic AST has none
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
+  testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
-  ruby/            TypeScript read with Ruby's eyes: `def`, and `end` instead of braces on functions and classes
+  ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
-src/main.tsx       demo page: pick a theme, render sample.ts into a <pre>
+src/main.tsx       demo page: pick a theme, render sample.ts
 test/core/         tests for the core building blocks
 ```
 
@@ -45,81 +53,84 @@ blocks. Mixing themes is deliberately not a goal: a theme is a coherent set
 of reading decisions, and the way to get a different set is to copy a folder
 and change it.
 
-## Why Splice works the way it does
-
-The compiler's `forEachChild` yields syntax nodes only: `function`, `(`, `,`,
-`=>` and other tokens are invisible to it, and so are comments. Hand-writing a
-component per kind just to put the tokens back would be a lot of work
-unrelated to the research goal, and tokens that are not nodes can never be
-claimed by a transform.
-
-So children come from the services-layer `node.getChildren(sourceFile)`,
-which lazily scans the node's range and materialises tokens (and `SyntaxList`
-wrappers around node arrays) as real `ts.Node`s. The AST is still not
-mutated; this is the same view the language service uses. JSDoc nodes are
-dropped from the child list because their range overlaps the leading trivia
-of the following token.
-
-The default component then splices text: it takes the node's range
-`[pos, end)`, replaces each child's range with a recursive `<Render>`, and
-emits anything between children verbatim. Whitespace and comments live in
-each token's leading trivia, so they need no special handling. Every node is
-wrapped in `<span data-kind="...">`, which gives CSS and later transforms a
-hook.
-
-Only kinds that a transform wants to intervene on need a dedicated component.
-
-## Shape of a transform
-
-A transform claims the node that *owns* a decision and hands it to a
-component. The component decides the layout of its subtree, then dispatches
-the children it does not care about through the normal machinery.
+## A designed component
 
 ```tsx
 // src/themes/ruby/function.tsx
-const Def = replaceToken('def')
-
-const pickFunctionChild: PickChild = child => {
-  if (child.kind === ts.SyntaxKind.FunctionKeyword) return Def
-  if (ts.isBlock(child)) return RubyBody
-  return undefined
+export function RubyFunction({ node, ctx }: NodeProps<ts.FunctionDeclaration | ts.FunctionExpression>) {
+  return (
+    <>
+      <span class="header">
+        {modifiers} def {node.asteriskToken && '*'}
+        {node.name && <Render node={node.name} ctx={ctx} />}
+        (<Join nodes={node.parameters} sep=", " ctx={ctx} />)
+        {node.type && <>: <Render node={node.type} ctx={ctx} /></>}
+      </span>
+      {node.body && (
+        <>
+          <Indent><Lines nodes={node.body.statements} ctx={ctx} /></Indent>
+          <Line>end</Line>
+        </>
+      )}
+    </>
+  )
 }
 
-function RubyFunction({ node, ctx }: NodeProps) {
-  return <NodeSpan node={node}>{spliceChildren(node, ctx, pickFunctionChild)}</NodeSpan>
-}
-
-export const rubyFunction: Transform = next => (node, ctx) =>
-  ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-    ? RubyFunction
-    : next(node, ctx)
+export const rubyFunction = claim(isFunction, RubyFunction)
 
 // src/themes/ruby/index.ts
-export const ruby: Theme = { name: 'ruby', transforms: [rubyFunction, rubyClass] }
+export const ruby: Theme = { name: 'ruby', transforms: [rubySourceFile, rubyFunction, rubyClass] }
 ```
 
-There are two ways for a component to influence what is rendered below it,
-and the difference is scope:
+`def`, the parens, the separator and `end` are the component's own output.
+It reads `node.parameters` and `node.body.statements`, hands each child to
+`<Render>`, and never asks where the `function` keyword was. The header is
+inline rather than a `Line`, so the same component works as a statement
+(where the parent's `Lines` already gives it a line) and as an expression
+(where it continues the line it appears on).
 
-- `spliceChildren(node, ctx, pick)` lets it choose the component for
-  specific *direct* children. Grandchildren are untouched. This is how
-  `RubyFunction` hands its body to `RubyBody`, which in turn drops its own
-  `{` and renders its own `}` as `end` without affecting the `if` blocks and
-  object literals inside.
-- `withTransforms(ctx, transforms)` stacks transforms onto the ctx passed
-  down, so they apply to the *whole subtree*. Global and local decisions use
-  the same mechanism; only the scope differs. Use it for things like "every
-  identifier in here", not for structural rewrites.
+## The fallback
+
+TypeScript has well over a hundred node kinds, and a theme designs only a
+few. Everything else is rendered by `Verbatim`: the node's original text,
+with its semantic children rendered recursively so a designed component can
+still take over deep inside. Tokens, whitespace and comments between
+children are emitted as they were. With no transforms at all, the whole file
+renders to exactly its source, and the tests check that.
+
+Two details make the fallback coexist with designed layout:
+
+- A node's verbatim text starts *after* its leading trivia. Comments before
+  a node belong to whoever lays the node out: the parent's gap text in
+  `Verbatim`, or `Lines`, which asks `leadingComments()` and gives each its
+  own line.
+- Multi-line verbatim text is shown relative to the indentation of its
+  first line, so an undesigned `if` block placed under an `Indent` lines up
+  with its designed siblings. `Line` and `Indent` reset that scope.
+
+A theme whose output is not text would supply its own fallback, such as a
+box showing the source.
+
+## Scoping
+
+A component influences what is rendered below it in two ways, differing
+only in scope:
+
+- Direct composition: it renders a child with a specific component, as
+  `RubyFunction` does with `Lines` for its body, or through `<Render>` to
+  let the resolver decide.
+- `withTransforms(ctx, transforms)` stacks transforms onto the ctx it passes
+  down, so they apply to the whole subtree. Global and local decisions use
+  the same mechanism.
 
 `transforms[0]` is outermost and gets the first chance to claim a node.
 Transforms that span sibling nodes (e.g. collapsing consecutive guards into
-one line) need the container component to group children before dispatching
-them; that part has not been started.
+one line) are a container's job: `Lines` is where grouping would go.
 
 ## Commands
 
 ```
-pnpm dev        # view sample.ts rendered verbatim
+pnpm dev        # view sample.ts through the current theme
 pnpm test       # vitest
 pnpm typecheck  # tsc
 ```

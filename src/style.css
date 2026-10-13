@@ -7,14 +7,25 @@ body {
   background: #fdfdfd;
   color: #222;
 }
-pre {
+.code {
   margin: 0;
   white-space: pre;
 }
-/* Every node is a span tagged with its SyntaxKind; style hooks go here. */
-[data-kind] {
-  border-radius: 2px;
+/* Layout is structure: a line is a block, an indent pads. */
+.line {
+  min-height: 1lh;
 }
+.line[data-gap] {
+  margin-top: 1lh;
+}
+.indent {
+  padding-left: 2ch;
+}
+.comment {
+  color: #888;
+}
+/* Every node is a span tagged with its SyntaxKind; style hooks go here. */
 [data-kind]:hover {
   outline: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
 }

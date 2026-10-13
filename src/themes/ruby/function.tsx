@@ -1,27 +1,54 @@
 import ts from 'typescript'
-import { NodeSpan, replaceToken, spliceChildren, type NodeProps, type PickChild, type Transform } from '../../core'
-import { RubyBody } from './braces'
-
-const Def = replaceToken('def')
+import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../core'
 
 /**
- * Owns the rendering of a function. It lays out its direct children itself:
- * the `function` keyword reads as `def`, and the body block gets `end`
- * instead of braces. Everything else (name, parameters, return type) is
- * dispatched normally.
+ * A function laid out from its semantic fields: the keyword is `def`, the
+ * body sits in an Indent and closes with `end`. Nothing here looks at
+ * tokens; `def`, the parens and `end` are this component's own output.
+ *
+ * The header is inline, not a Line: as a statement it already sits in a
+ * Line from the parent's `Lines`, and as an expression it continues the
+ * line it appears on.
  */
-const pickFunctionChild: PickChild = (child) => {
-  if (child.kind === ts.SyntaxKind.FunctionKeyword) return Def
-  if (ts.isBlock(child)) return RubyBody
-  return undefined
+export function RubyFunction({ node, ctx }: NodeProps<ts.FunctionDeclaration | ts.FunctionExpression>) {
+  return (
+    <>
+      <span class="header">
+        {node.modifiers?.map((m) => (
+          <>
+            <Render key={m.pos} node={m} ctx={ctx} />{' '}
+          </>
+        ))}
+        def {node.asteriskToken && '*'}
+        {node.name && <Render node={node.name} ctx={ctx} />}
+        {node.typeParameters && (
+          <>
+            {'<'}
+            <Join nodes={node.typeParameters} sep=", " ctx={ctx} />
+            {'>'}
+          </>
+        )}
+        (<Join nodes={node.parameters} sep=", " ctx={ctx} />)
+        {node.type && (
+          <>
+            : <Render node={node.type} ctx={ctx} />
+          </>
+        )}
+      </span>
+      {node.body && (
+        <>
+          <Indent>
+            <Lines nodes={node.body.statements} ctx={ctx} />
+          </Indent>
+          <Line>end</Line>
+        </>
+      )}
+    </>
+  )
 }
 
-function RubyFunction({ node, ctx }: NodeProps) {
-  return <NodeSpan node={node}>{spliceChildren(node, ctx, pickFunctionChild)}</NodeSpan>
-}
+const isFunction = (n: ts.Node): n is ts.FunctionDeclaration | ts.FunctionExpression =>
+  ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n)
 
 /** `function f() { ... }` reads as `def f() ... end`. */
-export const rubyFunction: Transform = (next) => (node, ctx) =>
-  ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-    ? RubyFunction
-    : next(node, ctx)
+export const rubyFunction = claim(isFunction, RubyFunction)

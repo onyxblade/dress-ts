@@ -5,19 +5,23 @@ import { rubyClass } from '../class'
 const show = (text: string) => renderText(text, [rubyClass])
 
 describe('rubyClass', () => {
-  it('replaces the class braces', () => {
-    expect(show('class A {\n  x = 1\n}')).toBe('class A\n  x = 1\nend')
+  it('lays out a class as class ... end', () => {
+    expect(show('class A {\n  x = 1\n}')).toBe('class A\n  x = 1\nend\n')
   })
 
-  it('keeps heritage clauses and type parameters', () => {
-    expect(show('export class A<T> extends B implements C {}')).toBe('export class A<T> extends B implements C end')
+  it('keeps modifiers, type parameters and heritage clauses', () => {
+    expect(show('export abstract class A<T> extends B<T> implements C, D {}')).toBe(
+      'export abstract class A<T> extends B<T> implements C, D\nend\n',
+    )
   })
 
-  it('leaves member bodies alone', () => {
-    expect(show('class A {\n  m() { return {} }\n}')).toBe('class A\n  m() { return {} }\nend')
+  it('shows undesigned members verbatim and keeps blank-line groups', () => {
+    expect(show('class A {\n  x = 1\n\n  m() {\n    return {}\n  }\n}')).toBe(
+      'class A\n  x = 1\n\n  m() {\n    return {}\n  }\nend\n',
+    )
   })
 
-  it('applies to class expressions', () => {
-    expect(show('const A = class {}')).toBe('const A = class end')
+  it('handles an anonymous class expression', () => {
+    expect(show('const A = class {}')).toBe('const A = class\nend\n')
   })
 })
