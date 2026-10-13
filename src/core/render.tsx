@@ -27,14 +27,14 @@ export function Render({ node, ctx }: NodeProps) {
     <>
       {leading.map((c) => (
         <>
-          <CommentText key={c.pos} comment={c} />{' '}
+          <CommentText key={c.pos} comment={c} ctx={ctx} />{' '}
         </>
       ))}
       <Dispatch node={node} ctx={ctx} />
       {trailing.map((c) => (
         <>
           {' '}
-          <CommentText key={c.pos} comment={c} />
+          <CommentText key={c.pos} comment={c} ctx={ctx} />
         </>
       ))}
     </>

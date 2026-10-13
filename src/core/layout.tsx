@@ -117,7 +117,7 @@ export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; withi
         if (item.kind === 'comment') {
           return (
             <Line key={`c${item.comment.pos}`} data-gap={gap}>
-              <CommentText comment={item.comment} />
+              <CommentText comment={item.comment} ctx={ctx} />
             </Line>
           )
         }
@@ -125,14 +125,14 @@ export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; withi
           <Line key={`n${item.node.pos}`} node={item.node} data-gap={gap}>
             {item.inline.map((c) => (
               <>
-                <CommentText key={c.pos} comment={c} />{' '}
+                <CommentText key={c.pos} comment={c} ctx={ctx} />{' '}
               </>
             ))}
             <Dispatch node={item.node} ctx={ctx} />
             {item.trailing.map((c) => (
               <>
                 {' '}
-                <CommentText key={c.pos} comment={c} />
+                <CommentText key={c.pos} comment={c} ctx={ctx} />
               </>
             ))}
           </Line>

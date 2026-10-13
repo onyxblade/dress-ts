@@ -116,16 +116,28 @@ describe('comments in designed layout', () => {
     expect(renderText(src, designed)).toBe(src + '\n')
   })
 
-  // The continuation lines of these block comments start at column 0:
-  // CommentText shows a comment's text as written, so a line indented in
-  // the source would be indented twice under the Indent.
   it('Lines measures a gap from the end of a trailing comment, not of the node', () => {
-    expect(renderText('{\n  a() /* m\nn */\n  b()\n}', designed)).toBe('{\n  a() /* m\n  n */\n  b()\n}\n')
-    expect(renderText('{\n  a() /* m\nn */\n\n  b()\n}', designed)).toBe('{\n  a() /* m\n  n */\n\n  b()\n}\n')
+    const tight = '{\n  a() /* m\n  n */\n  b()\n}'
+    expect(renderText(tight, designed)).toBe(tight + '\n')
+    const spaced = '{\n  a() /* m\n  n */\n\n  b()\n}'
+    expect(renderText(spaced, designed)).toBe(spaced + '\n')
   })
 
   it('Lines keeps a leading comment on the line of its node when it was there', () => {
-    expect(renderText('{\n  /* x */ a()\n  /* y\nz */ b()\n}', designed)).toBe('{\n  /* x */ a()\n  /* y\n  z */ b()\n}\n')
+    const src = '{\n  /* x */ a()\n  /* y\n     z */ b()\n}'
+    expect(renderText(src, designed)).toBe(src + '\n')
+  })
+
+  it('CommentText shows a multi-line comment relative to its own first line under an Indent', () => {
+    const src = '{\n  a()\n  /*\n   * about b\n   */\n  b()\n}'
+    expect(renderText(src, designed)).toBe(src + '\n')
+  })
+
+  it('CommentText shows a comment inside a verbatim region relative to that region', () => {
+    // The statement is verbatim, with the call designed inside it: Render
+    // emits the comment trailing `f`, within the statement's indentation.
+    const src = '{\n  x = f /* a\n    b */ ()\n}'
+    expect(renderText(src, designed)).toBe('{\n  x = f /* a\n    b */()\n}\n')
   })
 
   it('Render emits the comments attached to the child inline', () => {

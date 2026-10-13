@@ -1,5 +1,7 @@
 import ts from 'typescript'
-import { childNodes } from './verbatim'
+import { useContext } from 'preact/hooks'
+import type { Ctx } from './types'
+import { VerbatimScope, childNodes, dedent, lineIndentAt } from './verbatim'
 
 export interface Comment {
   pos: number
@@ -111,6 +113,14 @@ export function attachComments(sourceFile: ts.SourceFile): CommentMap {
   return { all, of: (node) => map.get(node) ?? NONE }
 }
 
-export function CommentText({ comment }: { comment: Comment }) {
-  return <span class="comment">{comment.text}</span>
+/**
+ * A comment's text, shown relative to the indentation of the region it is
+ * in, as `Verbatim` shows a node's text: the enclosing verbatim region's,
+ * or, in designed layout where there is none, that of the comment's own
+ * first line. A multi-line comment under an `Indent` then lines up
+ * instead of carrying its source indentation on top of the layout's.
+ */
+export function CommentText({ comment, ctx }: { comment: Comment; ctx: Ctx }) {
+  const width = useContext(VerbatimScope) ?? lineIndentAt(ctx.sourceFile.text, comment.pos)
+  return <span class="comment">{dedent(comment.text, width)}</span>
 }

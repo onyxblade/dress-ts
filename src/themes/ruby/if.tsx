@@ -27,7 +27,7 @@ function Between({ before, after, ctx }: { before: ts.Statement; after: ts.State
       {comments.map((c) => (
         <>
           {' '}
-          <CommentText key={c.pos} comment={c} />
+          <CommentText key={c.pos} comment={c} ctx={ctx} />
         </>
       ))}
     </>

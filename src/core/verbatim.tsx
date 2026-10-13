@@ -37,13 +37,13 @@ function startOf(node: ts.Node, sourceFile: ts.SourceFile): number {
 }
 
 /** Width of the whitespace that opens the line containing `pos`. */
-function lineIndentAt(text: string, pos: number): number {
+export function lineIndentAt(text: string, pos: number): number {
   const lineStart = text.lastIndexOf('\n', pos - 1) + 1
   return /^[ \t]*/.exec(text.slice(lineStart, pos))![0].length
 }
 
 /** Drop up to `width` chars of indentation after every newline. */
-function dedent(text: string, width: number): string {
+export function dedent(text: string, width: number): string {
   return width === 0 ? text : text.replace(/\n[ \t]*/g, (m) => '\n' + m.slice(1).slice(width))
 }
 
