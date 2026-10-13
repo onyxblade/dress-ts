@@ -41,7 +41,8 @@ src/core/          building blocks shared by every theme
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
   testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
-  ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`
+  ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
+                   `if ... elsif ... else ... end`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/main.tsx       demo page: pick a theme, render sample.ts
 test/core/         tests for the core building blocks
@@ -57,7 +58,7 @@ and change it.
 
 ```tsx
 // src/themes/ruby/function.tsx
-export function RubyFunction({ node, ctx }: NodeProps<ts.FunctionDeclaration | ts.FunctionExpression>) {
+export function RubyFunction({ node, ctx }: NodeProps<DefLike>) { // function declaration/expression or method
   return (
     <>
       <span class="header">
@@ -79,7 +80,7 @@ export function RubyFunction({ node, ctx }: NodeProps<ts.FunctionDeclaration | t
 export const rubyFunction = claim(isFunction, RubyFunction)
 
 // src/themes/ruby/index.ts
-export const ruby: Theme = { name: 'ruby', transforms: [rubySourceFile, rubyFunction, rubyClass] }
+export const ruby: Theme = { name: 'ruby', transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf] }
 ```
 
 `def`, the parens, the separator and `end` are the component's own output.

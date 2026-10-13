@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderText } from '../../../core/testing'
 import { rubyFunction } from '../function'
+import { rubyClass } from '../class'
 
 const show = (text: string) => renderText(text, [rubyFunction])
 
@@ -39,5 +40,30 @@ describe('rubyFunction', () => {
 
   it('leaves identifiers named function-ish alone', () => {
     expect(show('const functional = 1')).toBe('const functional = 1')
+  })
+})
+
+describe('rubyFunction on class methods', () => {
+  // Inside a designed class, so the method's `end` has an Indent to sit in.
+  const inClass = (text: string) => renderText(text, [rubyFunction, rubyClass])
+
+  it('lays out a method as def ... end', () => {
+    expect(inClass('class A {\n  m() {\n    return 1\n  }\n}')).toBe('class A\n  def m()\n    return 1\n  end\nend\n')
+  })
+
+  it('keeps modifiers, generator star, optional marker, type parameters and return type', () => {
+    expect(inClass('class A {\n  static async *m?<T>(a: T): void {}\n}')).toBe(
+      'class A\n  static async def *m?<T>(a: T): void\n  end\nend\n',
+    )
+  })
+
+  it('renders an abstract or overload method without end', () => {
+    expect(inClass('abstract class A {\n  abstract m(): void\n}')).toBe('abstract class A\n  abstract def m(): void\nend\n')
+  })
+
+  it('leaves constructors and accessors alone', () => {
+    expect(inClass('class A {\n  constructor() {}\n  get x() { return 1 }\n}')).toBe(
+      'class A\n  constructor() {}\n  get x() { return 1 }\nend\n',
+    )
   })
 })

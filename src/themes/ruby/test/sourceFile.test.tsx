@@ -10,4 +10,10 @@ describe('ruby theme', () => {
       '/** doc */\nimport a from "a" // why\n\n// about f\nexport def f()\nend\n',
     )
   })
+
+  it('composes class, method and if', () => {
+    expect(show('class A {\n  m(x: number) {\n    if (x) {\n      return 1\n    } else {\n      return 2\n    }\n  }\n}\n')).toBe(
+      'class A\n  def m(x: number)\n    if x\n      return 1\n    else\n      return 2\n    end\n  end\nend\n',
+    )
+  })
 })
