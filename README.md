@@ -63,8 +63,8 @@ src/themes/index.ts the list of themes the demo page offers; a new theme folder 
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
                    not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
                    hovering a node on one side marks the same node on the other, by nodeId, and shows a card
-                   at once: the quick info of the token under the pointer, or on a theme's own words, the
-                   reading they belong to and the node as written; a click pins the card, Escape lets it go
+                   at once: the quick info of the token under the pointer, or the reading that node is shown
+                   in and the node as written; a click pins the card, Escape lets it go
 src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```
@@ -232,12 +232,13 @@ What a token *is* belongs to the hover, and that is the service's quick
 info, the same answer an editor shows: the declaration form, `(method)
 Walker<T>.walk(path?: string): AsyncGenerator<string>`, then the JSDoc and
 its tags. Since the service answers at a position, `x` after `if (x ===
-null) return` is already narrowed. `quickInfoAt(service, fileName, end)`
-in `quickInfo.tsx` asks for the token ending at `end` and the page gets
-`end` from the hovered span's `nodeId`, so the rendering carries nothing
-but identity: the card is composed when the pointer arrives, on either
-side, and `QuickInfo` lays it out with each display part tagged by kind
-for the stylesheet.
+null) return` is already narrowed. `quickInfoAt(service, fileName, range)`
+in `quickInfo.tsx` asks for the token filling `range`, so a hover over
+`return x` is not answered with `x`, and the page gets the range from the
+hovered span's `nodeId`, so the rendering carries nothing but identity:
+the card is composed when the pointer arrives, on either side, and
+`QuickInfo` lays it out with each display part tagged by kind for the
+stylesheet.
 
 Further effects the same ingredients make possible: inferred types shown
 inline where an annotation is missing; a link from each use to its

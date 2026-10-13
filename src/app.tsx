@@ -10,6 +10,7 @@ import {
   parseNodeId,
   quickInfoAt,
   semanticIdentifiers,
+  type NodeRange,
   type Theme,
   type Transform,
 } from './core'
@@ -77,11 +78,18 @@ function markPeers(root: HTMLElement, target: EventTarget | null) {
   root.querySelectorAll(`[data-node="${id}"]`).forEach((el) => el.classList.add('peer'))
 }
 
-/** The node under the pointer: its span and the range its identity encodes. */
-function hovered(target: EventTarget | null) {
+/** The node under the pointer: the nearest element carrying an identity, and what it encodes. */
+function hovered(target: EventTarget | null): Hovered | undefined {
   const el = (target as Element | null)?.closest?.('[data-node]')
-  const range = el && parseNodeId(el.getAttribute('data-node')!)
-  return range ? { el, range } : undefined
+  const id = el?.getAttribute('data-node')
+  const range = id ? parseNodeId(id) : undefined
+  return el && id && range ? { el, id, range } : undefined
+}
+
+interface Hovered {
+  el: Element
+  id: string
+  range: NodeRange
 }
 
 /** The first line of a node as written, which is what a reading replaced. */
@@ -92,13 +100,18 @@ function written(node: ts.Node, sourceFile: ts.SourceFile): string {
 }
 
 /**
- * The reading the pointer is inside, when it is on words the theme wrote:
- * the mark's note, and the node as written. On a source token the quick
- * info wins, see below, so this is what the tinted words explain.
+ * The reading the hovered node is shown in, when a theme gave it one: the
+ * mark's note, and the node as written. The mark carries the node's own
+ * identity and is the hovered element itself, around it, or just inside
+ * it, since the Line laid out for a statement wraps the mark. The nearest
+ * mark around the pointer would be wrong: beside the header of an
+ * `if ... end` the pointer is on the if's Line, yet inside the mark of the
+ * function around it. On a source token the quick info wins, see below.
  */
-function readingAt(target: EventTarget | null, sourceFile: ts.SourceFile) {
-  const mark = (target as Element | null)?.closest?.('[data-reading]')
-  const node = mark && nodeById(sourceFile, mark.getAttribute('data-node')!)
+function readingOf({ el, id }: Hovered, sourceFile: ts.SourceFile) {
+  const own = `[data-reading][data-node="${id}"]`
+  const mark = el.closest(own) ?? el.querySelector(own)
+  const node = mark && nodeById(sourceFile, id)
   return node ? { note: mark.getAttribute('data-reading')!, written: written(node, sourceFile) } : undefined
 }
 
@@ -107,12 +120,13 @@ type Card = { kind: 'info'; info: ts.QuickInfo } | { kind: 'reading'; note: stri
 /** The card for a pointer position: what it says, and where it hangs. */
 function cardAt(e: MouseEvent, service: ts.LanguageService, fileName: string): Shown | null {
   const h = hovered(e.target)
-  const info = h && quickInfoAt(service, fileName, h.range.end)
+  if (!h) return null
+  const info = quickInfoAt(service, fileName, h.range)
   if (info) {
     const r = h.el.getBoundingClientRect()
     return { card: { kind: 'info', info }, at: { left: r.left, top: r.bottom }, pinned: false }
   }
-  const reading = readingAt(e.target, service.getProgram()!.getSourceFile(fileName)!)
+  const reading = readingOf(h, service.getProgram()!.getSourceFile(fileName)!)
   // A reading mark has no box; anchor to the pointer.
   return reading ? { card: { kind: 'reading', ...reading }, at: { left: e.clientX, top: e.clientY + 16 }, pinned: false } : null
 }

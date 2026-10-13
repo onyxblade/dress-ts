@@ -4,12 +4,26 @@ import ts from 'typescript'
  * What an editor shows on hover: the declaration form of what a token
  * names, `(method) Walker<T>.walk(path?: string): AsyncGenerator<string>`,
  * then its documentation. The language service composes it; this only asks
- * at a position and checks the answer is about the token ending there, so
- * a hover over a whole expression does not pick up its last identifier.
+ * at the end of a node's range and checks the answer is about a token
+ * filling that range, so a hover over `return x` or `a.b` does not pick up
+ * the `x` or `b` it ends with. The range is the node's, leading trivia
+ * included, as `nodeId` encodes it.
  */
-export function quickInfoAt(service: ts.LanguageService, fileName: string, end: number): ts.QuickInfo | undefined {
-  const info = service.getQuickInfoAtPosition(fileName, end - 1)
-  return info && info.textSpan.start + info.textSpan.length === end ? info : undefined
+export function quickInfoAt(service: ts.LanguageService, fileName: string, range: { pos: number; end: number }): ts.QuickInfo | undefined {
+  const info = service.getQuickInfoAtPosition(fileName, range.end - 1)
+  if (!info) return undefined
+  return info.textSpan.start === tokenStart(service, fileName, range.pos) && info.textSpan.start + info.textSpan.length === range.end
+    ? info
+    : undefined
+}
+
+/** Where the first token at or after `pos` starts, past whitespace and comments. */
+function tokenStart(service: ts.LanguageService, fileName: string, pos: number): number {
+  const text = service.getProgram()!.getSourceFile(fileName)!.text
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, /* skipTrivia */ true, ts.LanguageVariant.Standard, text)
+  scanner.resetTokenState(pos)
+  scanner.scan()
+  return scanner.getTokenStart()
 }
 
 /**
