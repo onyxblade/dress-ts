@@ -42,7 +42,7 @@ src/core/          building blocks shared by every theme
   testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
-                   `if ... elsif ... else ... end`
+                   `if ... elsif ... else ... end`, guards as `return 0 if x`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/main.tsx       demo page: pick a theme, render sample.ts
 test/core/         tests for the core building blocks
