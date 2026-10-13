@@ -61,9 +61,9 @@ describe('rubyFunction on class methods', () => {
     expect(inClass('abstract class A {\n  abstract m(): void\n}')).toBe('abstract class A\n  abstract def m(): void\nend\n')
   })
 
-  it('leaves constructors and accessors alone', () => {
-    expect(inClass('class A {\n  constructor() {}\n  get x() { return 1 }\n}')).toBe(
-      'class A\n  constructor() {}\n  get x() { return 1 }\nend\n',
+  it('reads a constructor as def constructor, leaves accessors alone', () => {
+    expect(inClass('class A {\n  private constructor(a: number) { this.a = a }\n  get x() { return 1 }\n}')).toBe(
+      'class A\n  def constructor(a: number)\n    this.a = a\n  end\n  get x() { return 1 }\nend\n',
     )
   })
 })

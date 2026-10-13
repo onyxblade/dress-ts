@@ -3,8 +3,8 @@ import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../
 import { TypeList } from './generics'
 import { Modifiers } from './modifiers'
 
-/** Function declarations, function expressions and class methods share the `def` shape. */
-export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration
+/** Function declarations, function expressions, class methods and constructors share the `def` shape. */
+export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration | ts.ConstructorDeclaration
 
 /**
  * A function laid out from its semantic fields: the keyword is `def`, the
@@ -17,6 +17,9 @@ export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.Method
  *
  * A method is the same shape with a `?` for optional members; TypeScript
  * keeps `name` and `questionToken` on the node, so one component covers both.
+ * A constructor has no name node, its `constructor` is a token, so the
+ * word is this component's: `def constructor(...)`. Not `initialize`,
+ * since the file's own calls say `new`.
  */
 export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
   return (
@@ -24,7 +27,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
       <span class="header">
         <Modifiers nodes={node.modifiers} ctx={ctx} />
         def {node.asteriskToken && '*'}
-        {node.name && <Render node={node.name} ctx={ctx} />}
+        {ts.isConstructorDeclaration(node) ? 'constructor' : node.name && <Render node={node.name} ctx={ctx} />}
         {node.questionToken && '?'}
         <TypeList nodes={node.typeParameters} ctx={ctx} />
         (<Join nodes={node.parameters} sep=", " ctx={ctx} />)
@@ -47,6 +50,10 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
 }
 
 const isDefLike = (n: ts.Node): n is DefLike =>
-  ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isMethodDeclaration(n)
+  ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isMethodDeclaration(n) || ts.isConstructorDeclaration(n)
 
-export const rubyFunction = claim(isDefLike, RubyFunction, '`function f() { ... }` and `m() { ... }` read as `def f() ... end`')
+export const rubyFunction = claim(
+  isDefLike,
+  RubyFunction,
+  '`function f() { ... }`, `m() { ... }` and `constructor() { ... }` read as `def f() ... end`',
+)

@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -21,9 +21,10 @@ The order is outermost first. The designed components claim their kinds;
 | file | reads | as |
 | --- | --- | --- |
 | `sourceFile.tsx` | the file | its statements one per line, comments and blank-line groups kept |
-| `function.tsx` | `function f() { ... }`, a function expression, a method `m() { ... }` | `def f() ... end` |
-| `class.tsx` | `class A<T> extends B { ... }` | `class A[T] extends B ... end` |
-| `class.tsx` | `interface A<T> extends B { ... }` | `interface A[T] extends B ... end` |
+| `function.tsx` | `function f() { ... }`, a function expression, a method `m() { ... }`, `constructor() { ... }` | `def f() ... end`, `def constructor() ... end` |
+| `class.tsx` | `class A<T> extends B { ... }` | `class A[T] < B ... end` |
+| `class.tsx` | `interface A<T> extends B { ... }` | `interface A[T] < B ... end` |
+| `class.tsx` | `extends B` | `< B`, the `implements` left as written |
 | `if.tsx` | `if (x) { ... } else if (y) { ... } else { ... }` | `if x ... elsif y ... else ... end` |
 | `if.tsx` | `if (x) return 0` | `return 0 if x` |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
@@ -42,8 +43,11 @@ shows when the pointer is on the theme's own words.
 
 `RubyFunction` writes `def`, the parens, `: type` and `end`; the
 modifiers, name, `*`, `?`, type parameters, parameters, return type and
-body are the node's. One component covers declarations, expressions and
-methods, since TypeScript keeps the same fields on all three. The header
+body are the node's. One component covers declarations, expressions,
+methods and constructors, since TypeScript keeps the same fields on all
+four; a constructor's `constructor` is a token, not a name node, so the
+word is the component's, `def constructor(o: T)`, not `initialize`, since
+the file's own calls say `new`. The header
 is inline, not a `Line`, so the component works as a statement, where the
 parent's `Lines` gives it a line, and as an expression, where it
 continues the line it appears on. `RubyClass` is the same shape with
@@ -52,6 +56,13 @@ fields a class does, modifiers, name, type parameters, heritage clauses,
 members, so the one component covers both and two claims name them. The
 members are the node's, each on a line, so a member's closing `;` or `,`
 goes the way a statement's does (see The fallback).
+
+Ruby writes the superclass after `<`, `class A < B`, so `RubyExtends`
+claims the `extends` heritage clause and writes `< ` before its types,
+and an interface's `extends B, C` reads as `< B, C` the same way. An
+`implements` clause has no Ruby form and stays as written. A type
+parameter's constraint, `A<T extends B>`, is not a heritage clause and
+keeps its `extends`.
 
 ### If
 

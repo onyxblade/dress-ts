@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import { Indent, Line, Lines, Render, claim, type NodeProps } from '../../core'
+import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../core'
 import { TypeList } from './generics'
 import { Modifiers } from './modifiers'
 
@@ -33,3 +33,22 @@ export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration | ts.
 
 export const rubyClass = claim(ts.isClassLike, RubyClass, '`class A { ... }` reads as `class A ... end`')
 export const rubyInterface = claim(ts.isInterfaceDeclaration, RubyClass, '`interface A { ... }` reads as `interface A ... end`')
+
+/**
+ * Ruby writes the superclass after `<`: `class A < B`. The `extends` is a
+ * token, not a node, so the `<` is this component's word and the types are
+ * the node's. An interface's `extends B, C` takes the same `<`; an
+ * `implements` has no Ruby form and stays with the fallback.
+ */
+export function RubyExtends({ node, ctx }: NodeProps<ts.HeritageClause>) {
+  return (
+    <>
+      {'< '}
+      <Join nodes={node.types} sep=", " ctx={ctx} />
+    </>
+  )
+}
+
+const isExtends = (n: ts.Node): n is ts.HeritageClause => ts.isHeritageClause(n) && n.token === ts.SyntaxKind.ExtendsKeyword
+
+export const rubyExtends = claim(isExtends, RubyExtends, '`extends B` reads as `< B`')

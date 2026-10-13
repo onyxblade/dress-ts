@@ -14,10 +14,10 @@ describe('noise modifiers', () => {
     expect(show('type A = { readonly a: 1; readonly b: 2 }')).toBe('type A = { a: 1; b: 2 }')
     expect(show('class A {\n  private static x = 1\n}')).toBe('class A\n  static x = 1\nend\n')
     expect(show('class A {\n  constructor(public readonly o: object, private p = 1) {}\n}')).toBe(
-      'class A\n  constructor(o: object, p = 1) {}\nend\n',
+      'class A\n  def constructor(o: object, p = 1)\n  end\nend\n',
     )
     expect(show('class A {\n  private constructor() {}\n  protected get x() { return 1 }\n}')).toBe(
-      'class A\n  constructor() {}\n  get x() { return 1 }\nend\n',
+      'class A\n  def constructor()\n  end\n  get x() { return 1 }\nend\n',
     )
   })
 
