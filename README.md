@@ -36,13 +36,13 @@ src/core/          building blocks shared by every theme
                    claim(guard, Component) is the usual transform; withTransforms() scopes transforms
                    to one component's subtree
   verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan
-  layout.tsx       Line, Indent, Join, Lines: the layout vocabulary
+  layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for
   comments.ts      leadingComments() / trailingComments(), since the semantic AST has none
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
   testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
-                   `if ... elsif ... else ... end`, guards as `return 0 if x`
+                   `if ... elsif ... else ... end`, guards as `return 0 if x`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/main.tsx       demo page: pick a theme, render sample.ts
 test/core/         tests for the core building blocks
@@ -108,6 +108,15 @@ Two details make the fallback coexist with designed layout:
 - Multi-line verbatim text is shown relative to the indentation of its
   first line, so an undesigned `if` block placed under an `Indent` lines up
   with its designed siblings. `Line` and `Indent` reset that scope.
+
+A theme can also vary the fallback for kinds it has not designed. The Ruby
+theme's `WithoutSemicolon` shows a statement's text like `Verbatim` but
+stops before a `;` that closes the line, since Ruby ends a statement with
+the line. Whether the `;` closes a line is a layout question, answered by
+layout: the node owns a `Line` (the `LineOwner` context set by `Lines`),
+or, inside a verbatim region, nothing but a trailing comment follows it in
+the source. A designed component for `return` would never write the `;` in
+the first place; the variant covers the kinds nobody has designed yet.
 
 A theme whose output is not text would supply its own fallback, such as a
 box showing the source.

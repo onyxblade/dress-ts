@@ -1,4 +1,5 @@
 import type ts from 'typescript'
+import { createContext } from 'preact'
 import type { Ctx } from './types'
 import { Render } from './render'
 import { VerbatimScope } from './verbatim'
@@ -10,12 +11,25 @@ import { leadingComments, trailingComments, type Comment } from './comments'
  * Both start a fresh VerbatimScope so fallback text inside lines up.
  */
 
-export function Line({ children, ...attrs }: { children?: preact.ComponentChildren } & Record<`data-${string}`, string | undefined>) {
+/**
+ * The node a Line was laid out for, when it was laid out for one. A
+ * component rendering that node can tell it has the line to itself (up to
+ * trailing comments), which is how the Ruby theme knows a `;` closes a line.
+ */
+export const LineOwner = createContext<ts.Node | null>(null)
+
+export function Line({
+  node = null,
+  children,
+  ...attrs
+}: { node?: ts.Node | null; children?: preact.ComponentChildren } & Record<`data-${string}`, string | undefined>) {
   return (
     <VerbatimScope.Provider value={null}>
-      <div class="line" {...attrs}>
-        {children}
-      </div>
+      <LineOwner.Provider value={node}>
+        <div class="line" {...attrs}>
+          {children}
+        </div>
+      </LineOwner.Provider>
     </VerbatimScope.Provider>
   )
 }
@@ -69,7 +83,7 @@ export function Lines({ nodes, ctx }: { nodes: readonly ts.Node[]; ctx: Ctx }) {
                 <CommentText comment={c} />
               </Line>
             ))}
-            <Line key={n.pos} data-gap={gap && comments.length === 0 ? '' : undefined}>
+            <Line key={n.pos} node={n} data-gap={gap && comments.length === 0 ? '' : undefined}>
               <Render node={n} ctx={ctx} />
               {trailingComments(n, sourceFile).map((c, j) => (
                 <>

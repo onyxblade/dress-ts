@@ -65,8 +65,11 @@ export const VerbatimScope = createContext<number | null>(null)
  *
  * Multi-line text is shown relative to the indentation of its first line,
  * so a verbatim statement placed under a layout `Indent` lines up.
+ *
+ * `end` lets a theme's fallback variant stop short of the node's last
+ * characters, e.g. a closing `;`, without re-implementing the splice.
  */
-export function Verbatim({ node, ctx }: NodeProps) {
+export function Verbatim({ node, ctx, end = node.end }: NodeProps & { end?: number }) {
   const { sourceFile } = ctx
   const text = sourceFile.text
   const inherited = useContext(VerbatimScope)
@@ -82,7 +85,7 @@ export function Verbatim({ node, ctx }: NodeProps) {
     parts.push(<Render key={child.pos} node={child} ctx={ctx} />)
     cursor = child.end
   }
-  if (cursor < node.end) parts.push(dedent(text.slice(cursor, node.end), width))
+  if (cursor < end) parts.push(dedent(text.slice(cursor, end), width))
 
   const span = <NodeSpan node={node}>{parts}</NodeSpan>
   return inherited === null ? <VerbatimScope.Provider value={width}>{span}</VerbatimScope.Provider> : span
