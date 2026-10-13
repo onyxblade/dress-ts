@@ -37,10 +37,13 @@ build their own variant.
 src/core/          building blocks shared by every theme
   types.ts         NodeProps<N> / Ctx / Resolve / Transform / Theme
   render.tsx       <Render> dispatches to a component, with the child's comments; <Dispatch> without;
-                   compose() stacks transforms on a base resolver; claim(guard, Component) is the usual
-                   transform; withTransforms() scopes transforms to one component's subtree
+                   compose() stacks transforms on a base resolver; claim(guard, Component, note?) is the
+                   usual transform, and with a note marks the output as a Reading, a form the source never
+                   had; withTransforms() scopes transforms to one component's subtree
+  identity.ts      nodeId(): a node's identity, the same in any reading of the file; parseNodeId() and
+                   nodeById() take a page from the DOM back to the node
   verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan tags every node
-                   with its kind and, via nodeId(), an identity that is the same in any reading of the file
+                   with its kind and identity
   layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for,
                    and the line carries that node's identity, so designed components need not
   comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
@@ -59,8 +62,9 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
                    not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
-                   hovering a node on one side marks the same node on the other, by nodeId, and shows the
-                   quick info of the token under the pointer, at once, in a card of the page's own
+                   hovering a node on one side marks the same node on the other, by nodeId, and shows a card
+                   at once: the quick info of the token under the pointer, or on a theme's own words, the
+                   reading they belong to and the node as written
 src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```
@@ -94,7 +98,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) { // function de
   )
 }
 
-export const rubyFunction = claim(isFunction, RubyFunction)
+export const rubyFunction = claim(isFunction, RubyFunction, '`function f() { ... }` reads as `def f() ... end`')
 
 // src/themes/ruby/index.ts
 export const ruby: Theme = { name: 'ruby', transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf] }
@@ -106,6 +110,18 @@ It reads `node.parameters` and `node.body.statements`, hands each child to
 inline rather than a `Line`, so the same component works as a statement
 (where the parent's `Lines` already gives it a line) and as an expression
 (where it continues the line it appears on).
+
+The note on the `claim` is the reading's own description, and it marks the
+component's output: `claim` wraps it in a `Reading`, a span with no box of
+its own (`display: contents`) carrying the note and the node's identity.
+A reader should be able to tell what a theme rewrote from what the file
+says, and the mark is where that comes from. The stylesheet tints the
+words inside a mark that are not inside a node span, which is exactly the
+theme's own words: `def`, `end`, `.new`, since every word of the source
+sits in a node span and takes the ink colour back. The page shows the note
+and the node as written when the pointer is on those words. A transform
+that only tags or trims the source text, like `semanticIdentifiers` or
+the Ruby theme's semicolon variant, has no note and leaves no mark.
 
 ## The fallback
 

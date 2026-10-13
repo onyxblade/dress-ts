@@ -4,6 +4,7 @@ import { useContext } from 'preact/hooks'
 import type { NodeProps } from './types'
 import { Dispatch } from './render'
 import { kindName } from './kind'
+import { nodeId } from './identity'
 
 /** Semantic children of a node in source order, as `forEachChild` sees them. */
 export function childNodes(node: ts.Node): ts.Node[] {
@@ -12,21 +13,6 @@ export function childNodes(node: ts.Node): ts.Node[] {
     out.push(c)
   })
   return out.sort((a, b) => a.pos - b.pos)
-}
-
-/**
- * The identity of a node across renders of the same file: its kind and its
- * range. Two readings of one file can be lined up by it, node for node,
- * even when their lines no longer correspond.
- */
-export function nodeId(node: ts.Node): string {
-  return `${kindName(node.kind)}@${node.pos}-${node.end}`
-}
-
-/** The range back out of an identity, for code that has only the DOM. */
-export function parseNodeId(id: string): { kind: string; pos: number; end: number } | undefined {
-  const m = /^(\w+)@(\d+)-(\d+)$/.exec(id)
-  return m ? { kind: m[1], pos: Number(m[2]), end: Number(m[3]) } : undefined
 }
 
 /** The kind-tagged span every node component wraps itself in. */

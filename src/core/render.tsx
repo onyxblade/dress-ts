@@ -2,6 +2,7 @@ import type ts from 'typescript'
 import type { ComponentType } from 'preact'
 import type { Ctx, NodeComponent, NodeProps, Resolve, Transform } from './types'
 import { CommentText, attachComments } from './comments'
+import { nodeId } from './identity'
 
 /**
  * Dispatch only: ask ctx.resolve which component renders this node, and
@@ -69,12 +70,40 @@ export function withTransforms(ctx: Ctx, transforms: Transform[]): Ctx {
 }
 
 /**
+ * The mark of a reading: a designed component shows the node in a form the
+ * source never had, and the reader should be able to tell. The wrapper
+ * has no box of its own (`display: contents` in the stylesheet), so it
+ * changes no layout; it carries the note that says what the reading is,
+ * and the node's identity, so a page can get from the mark back to the
+ * node and show what was written. The words inside it that are not in a
+ * node span are the component's own, which is what the stylesheet tints.
+ */
+export function Reading({ node, note, children }: { node: ts.Node; note: string; children?: preact.ComponentChildren }) {
+  return (
+    <span class="reading" data-reading={note} data-node={nodeId(node)}>
+      {children}
+    </span>
+  )
+}
+
+/**
  * The common transform: nodes matching a type guard are rendered by a
- * component typed for that node. Everything else falls through.
+ * component typed for that node. Everything else falls through. A
+ * `reading` note says, in a line, what the component shows instead of the
+ * source (`new Foo(a) reads as Foo.new(a)`), and marks its output as a
+ * Reading; a component that only tags or trims the source text has none.
  */
 export function claim<N extends ts.Node>(
   is: (node: ts.Node) => node is N,
   Component: ComponentType<NodeProps<N>>,
+  reading?: string,
 ): Transform {
-  return (next) => (node, ctx) => (is(node) ? (Component as NodeComponent) : next(node, ctx))
+  const Designed: NodeComponent = reading
+    ? (props) => (
+        <Reading node={props.node} note={reading}>
+          <Component {...(props as NodeProps<N>)} />
+        </Reading>
+      )
+    : (Component as NodeComponent)
+  return (next) => (node, ctx) => (is(node) ? Designed : next(node, ctx))
 }

@@ -106,5 +106,8 @@ export function RubyIf({ node, ctx }: NodeProps<ts.IfStatement>) {
   )
 }
 
-/** `if (x) { ... } else if (y) { ... } else { ... }` reads as `if x ... elsif y ... else ... end`; `if (x) return` as `return if x`. */
-export const rubyIf = claim(ts.isIfStatement, RubyIf)
+export const rubyIf = claim(
+  ts.isIfStatement,
+  RubyIf,
+  '`if (x) { ... } else if (y) { ... } else { ... }` reads as `if x ... elsif y ... else ... end`; `if (x) return` as `return if x`',
+)

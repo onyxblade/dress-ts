@@ -57,5 +57,4 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
 const isDefLike = (n: ts.Node): n is DefLike =>
   ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isMethodDeclaration(n)
 
-/** `function f() { ... }` and `m() { ... }` read as `def f() ... end`. */
-export const rubyFunction = claim(isDefLike, RubyFunction)
+export const rubyFunction = claim(isDefLike, RubyFunction, '`function f() { ... }` and `m() { ... }` read as `def f() ... end`')

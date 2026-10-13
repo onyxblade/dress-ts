@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import { Join, NodeSpan, Render, claim, type NodeProps } from '../../core'
+import { Join, Render, claim, type NodeProps } from '../../core'
 
 /**
  * Construction as a message to the class: `new Foo(a)` reads as
@@ -10,12 +10,12 @@ import { Join, NodeSpan, Render, claim, type NodeProps } from '../../core'
  * describe what is being made rather than the call. `new Foo` with no
  * argument list reads as `Foo.new`, parens and all left out as Ruby would.
  *
- * An expression component, so it wraps itself in a NodeSpan: unlike a
- * statement or member there is no Line to carry the node's identity.
+ * No span of its own: the Reading mark from `claim` carries the node's
+ * identity, and `.new` sits directly in it, so the mark can tint it.
  */
 export function RubyNew({ node, ctx }: NodeProps<ts.NewExpression>) {
   return (
-    <NodeSpan node={node}>
+    <>
       <Render node={node.expression} ctx={ctx} />
       {node.typeArguments && (
         <>
@@ -30,9 +30,8 @@ export function RubyNew({ node, ctx }: NodeProps<ts.NewExpression>) {
           (<Join nodes={node.arguments} sep=", " ctx={ctx} />)
         </>
       )}
-    </NodeSpan>
+    </>
   )
 }
 
-/** `new Foo(a)` reads as `Foo.new(a)`. */
-export const rubyNew = claim(ts.isNewExpression, RubyNew)
+export const rubyNew = claim(ts.isNewExpression, RubyNew, '`new Foo(a)` reads as `Foo.new(a)`')

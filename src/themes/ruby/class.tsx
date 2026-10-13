@@ -34,5 +34,4 @@ export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration>) {
   )
 }
 
-/** `class A { ... }` reads as `class A ... end`. */
-export const rubyClass = claim(ts.isClassLike, RubyClass)
+export const rubyClass = claim(ts.isClassLike, RubyClass, '`class A { ... }` reads as `class A ... end`')

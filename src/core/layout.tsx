@@ -2,7 +2,8 @@ import type ts from 'typescript'
 import { createContext } from 'preact'
 import type { Ctx } from './types'
 import { Dispatch, Render } from './render'
-import { VerbatimScope, nodeId } from './verbatim'
+import { VerbatimScope } from './verbatim'
+import { nodeId } from './identity'
 import { CommentText, type Comment } from './comments'
 
 /**

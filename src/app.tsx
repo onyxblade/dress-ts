@@ -6,6 +6,7 @@ import {
   Verbatim,
   compose,
   createCtx,
+  nodeById,
   parseNodeId,
   quickInfoAt,
   semanticIdentifiers,
@@ -83,22 +84,53 @@ function hovered(target: EventTarget | null) {
   return range ? { el, range } : undefined
 }
 
+/** The first line of a node as written, which is what a reading replaced. */
+function written(node: ts.Node, sourceFile: ts.SourceFile): string {
+  const text = sourceFile.text.slice(node.getStart(sourceFile), node.end)
+  const nl = text.indexOf('\n')
+  return nl === -1 ? text : `${text.slice(0, nl)} …`
+}
+
 /**
- * The quick info of the token under the pointer, as a card below it, shown
- * the moment the pointer arrives. Both panes show the same file, so one
- * card serves both and a position means the same thing on either side.
- * The card owns the state, so hovering re-renders the card and nothing
- * else; the panes are large and nothing about them changes.
+ * The reading the pointer is inside, when it is on words the theme wrote:
+ * the mark's note, and the node as written. On a source token the quick
+ * info wins, see below, so this is what the tinted words explain.
+ */
+function readingAt(target: EventTarget | null, sourceFile: ts.SourceFile) {
+  const mark = (target as Element | null)?.closest?.('[data-reading]')
+  const node = mark && nodeById(sourceFile, mark.getAttribute('data-node')!)
+  return node ? { note: mark.getAttribute('data-reading')!, written: written(node, sourceFile) } : undefined
+}
+
+type Card = { kind: 'info'; info: ts.QuickInfo } | { kind: 'reading'; note: string; written: string }
+
+/**
+ * A card below the pointer, shown the moment it arrives: the quick info of
+ * the token under it, or, on words a theme wrote, the reading they belong
+ * to. Both panes show the same file, so one card serves both and a
+ * position means the same thing on either side. The card owns the state,
+ * so hovering re-renders the card and nothing else; the panes are large
+ * and nothing about them changes.
  */
 function Hover({ root, service, fileName }: { root: { current: HTMLElement | null }; service: ts.LanguageService; fileName: string }) {
-  const [card, setCard] = useState<{ info: ts.QuickInfo; rect: DOMRect } | null>(null)
+  const [card, setCard] = useState<{ card: Card; at: { left: number; top: number } } | null>(null)
   useEffect(() => {
     const el = root.current
     if (!el) return
     const over = (e: MouseEvent) => {
       const h = hovered(e.target)
       const info = h && quickInfoAt(service, fileName, h.range.end)
-      setCard(info ? { info, rect: h.el.getBoundingClientRect() } : null)
+      const sourceFile = service.getProgram()!.getSourceFile(fileName)!
+      const reading = !info && readingAt(e.target, sourceFile)
+      if (info) {
+        const r = h.el.getBoundingClientRect()
+        setCard({ card: { kind: 'info', info }, at: { left: r.left, top: r.bottom } })
+      } else if (reading) {
+        // A reading mark has no box; anchor to the pointer.
+        setCard({ card: { kind: 'reading', ...reading }, at: { left: e.clientX, top: e.clientY + 16 } })
+      } else {
+        setCard(null)
+      }
     }
     const leave = () => setCard(null)
     el.addEventListener('mouseover', over)
@@ -109,11 +141,17 @@ function Hover({ root, service, fileName }: { root: { current: HTMLElement | nul
     }
   }, [root, service, fileName])
   if (!card) return null
-  const { info, rect } = card
-  const left = Math.min(rect.left, Math.max(0, window.innerWidth - 480))
+  const left = Math.min(card.at.left, Math.max(0, window.innerWidth - 480))
   return (
-    <div class="hover" style={`left: ${left}px; top: ${rect.bottom + 4}px`}>
-      <QuickInfo info={info} />
+    <div class="hover" style={`left: ${left}px; top: ${card.at.top + 4}px`}>
+      {card.card.kind === 'info' ? (
+        <QuickInfo info={card.card.info} />
+      ) : (
+        <div class="reading-info">
+          <p class="note">{card.card.note}</p>
+          <pre class="written">{card.card.written}</pre>
+        </div>
+      )}
     </div>
   )
 }

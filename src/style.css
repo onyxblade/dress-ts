@@ -48,11 +48,52 @@ body {
   padding-left: 2ch;
 }
 .comment {
-  color: #888;
+  --ink: #888;
+  color: var(--ink);
+}
+/*
+ * Ink: the colour of source text. A node span takes it, and a role sets
+ * it, so inside a reading (below) the source's own words come back to it
+ * while the theme's words keep the reading tint.
+ */
+.code {
+  --ink: #222;
+  color: var(--ink);
+}
+[data-kind] {
+  color: var(--ink);
 }
 /* Every node is a span tagged with its SyntaxKind; style hooks go here. */
 [data-kind]:hover {
   outline: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+/*
+ * A reading (see core Reading): a node shown in a form the source never
+ * had. The mark has no box; the tint lands on the words the theme wrote,
+ * since every word of the source sits in a node span and takes ink back.
+ */
+.reading {
+  display: contents;
+  color: #a8559a;
+}
+.reading-info .note {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: #444;
+}
+.reading-info .written {
+  margin: 0.5rem 0 0;
+  color: #666;
+  white-space: pre-wrap;
+}
+.reading-info .written::before {
+  content: 'written: ';
+  color: #999;
+}
+/* The same node, hovered on the other side (see app.tsx markPeers). */
+.peer {
+  background: rgba(255, 200, 0, 0.25);
   border-radius: 2px;
 }
 /* Quick info of the token under the pointer (see app.tsx Hover, core/quickInfo.tsx). */
@@ -104,15 +145,15 @@ body {
 /* What an identifier names, per the checker (see core/semantic.tsx). */
 [data-role='class'],
 [data-role='type'] {
-  color: #1a6b8a;
+  --ink: #1a6b8a;
 }
 [data-role='namespace'] {
-  color: #7a4d9c;
+  --ink: #7a4d9c;
 }
 [data-role='function'] {
-  color: #8a4b1a;
+  --ink: #8a4b1a;
 }
 [data-role='unresolved'] {
-  color: #b33;
+  --ink: #b33;
   text-decoration: underline dotted;
 }
