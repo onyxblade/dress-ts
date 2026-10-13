@@ -1,0 +1,56 @@
+import ts from 'typescript'
+import { Join, type Ctx, type Edit } from '../../core'
+
+/**
+ * Ruby's type syntax writes a generic in square brackets, `Array[String]`,
+ * `class Stack[T]`, so the theme shows every type parameter or argument
+ * list that way. There are two kinds of places a list appears, and each
+ * gets the brackets its own way.
+ *
+ * A designed component writes its own tokens, so it writes the brackets:
+ * `TypeList` is what it puts where the source had `<...>`, and renders
+ * nothing for a node without a list.
+ */
+export function TypeList({ nodes, ctx }: { nodes: ts.NodeArray<ts.Node> | undefined; ctx: Ctx }) {
+  return (
+    nodes && (
+      <>
+        [<Join nodes={nodes} sep=", " ctx={ctx} />]
+      </>
+    )
+  )
+}
+
+/** Where the first token at or after `pos` starts, past whitespace and comments. */
+function tokenAfter(text: string, pos: number): number {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, /* skipTrivia */ true, ts.LanguageVariant.Standard, text, undefined, pos)
+  scanner.scan()
+  return scanner.getTokenStart()
+}
+
+/** The lists of a node that the parser delimited with `<` and `>`, on the kinds that carry them. */
+function typeLists(node: ts.Node): ts.NodeArray<ts.Node>[] {
+  const { typeParameters, typeArguments } = node as { typeParameters?: ts.NodeArray<ts.Node>; typeArguments?: ts.NodeArray<ts.Node> }
+  return [typeParameters, typeArguments].filter((l): l is ts.NodeArray<ts.Node> => l !== undefined)
+}
+
+/**
+ * The other kind of place: an undesigned node shown verbatim, `Set<string>`
+ * as a type reference, `type Pair<T> = ...`, a call `f<T>(x)`. This rule of
+ * the theme's fallback (see fallback.tsx) swaps the two delimiters of each
+ * list the node carries. A list's range starts after its `<` and ends
+ * before its `>`, past any trivia, so the delimiters sit in the gaps
+ * around the list's elements, where an edit can reach them. A nested list
+ * belongs to a nested node, which handles its own.
+ */
+export function squareTypeLists(node: ts.Node, { sourceFile: { text } }: Ctx): Edit[] {
+  return typeLists(node).flatMap((list) => {
+    const open = list.pos - 1
+    const close = tokenAfter(text, list.end)
+    if (text[open] !== '<' || text[close] !== '>') return []
+    return [
+      { from: open, to: open + 1, text: '[' },
+      { from: close, to: close + 1, text: ']' },
+    ]
+  })
+}

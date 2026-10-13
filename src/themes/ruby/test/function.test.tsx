@@ -12,7 +12,7 @@ describe('rubyFunction', () => {
 
   it('keeps modifiers, generator star, type parameters and return type', () => {
     expect(show('export async function* g<T, U>(a: T, b?: U): void {}')).toBe(
-      'export async def *g<T, U>(a: T, b?: U): void\nend\n',
+      'export async def *g[T, U](a: T, b?: U): void\nend\n',
     )
   })
 
@@ -53,7 +53,7 @@ describe('rubyFunction on class methods', () => {
 
   it('keeps modifiers, generator star, optional marker, type parameters and return type', () => {
     expect(inClass('class A {\n  static async *m?<T>(a: T): void {}\n}')).toBe(
-      'class A\n  static async def *m?<T>(a: T): void\n  end\nend\n',
+      'class A\n  static async def *m?[T](a: T): void\n  end\nend\n',
     )
   })
 

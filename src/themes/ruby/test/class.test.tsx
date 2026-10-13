@@ -11,7 +11,7 @@ describe('rubyClass', () => {
 
   it('keeps modifiers, type parameters and heritage clauses', () => {
     expect(show('export abstract class A<T> extends B<T> implements C, D {}')).toBe(
-      'export abstract class A<T> extends B<T> implements C, D\nend\n',
+      'export abstract class A[T] extends B<T> implements C, D\nend\n',
     )
   })
 

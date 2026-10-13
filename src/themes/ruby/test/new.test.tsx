@@ -16,8 +16,8 @@ describe('rubyNew', () => {
   })
 
   it('keeps type arguments on the class', () => {
-    expect(show('new Set<string>()')).toBe('Set<string>.new()')
-    expect(show('new Map<string, number>(entries)')).toBe('Map<string, number>.new(entries)')
+    expect(show('new Set<string>()')).toBe('Set[string].new()')
+    expect(show('new Map<string, number>(entries)')).toBe('Map[string, number].new(entries)')
   })
 
   it('keeps a qualified or parenthesized class expression', () => {

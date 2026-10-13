@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { renderText } from '../../../core/testing'
-import { rubySemicolons } from '../semicolon'
+import { rubyFallback } from '../fallback'
 import { rubySourceFile } from '../sourceFile'
 import { rubyClass } from '../class'
 import { rubyIf } from '../if'
 
-const show = (text: string) => renderText(text, [rubySourceFile, rubyClass, rubyIf, rubySemicolons])
+const show = (text: string) => renderText(text, [rubySourceFile, rubyClass, rubyIf, rubyFallback])
 
-describe('rubySemicolons', () => {
+describe('closingSemicolon', () => {
   it('drops the semicolon of a statement that owns its line', () => {
     expect(show('import a from "a";\nconst x = 1;\nf();')).toBe('import a from "a"\nconst x = 1\nf()\n')
   })

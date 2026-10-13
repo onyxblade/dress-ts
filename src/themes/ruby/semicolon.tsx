@@ -1,6 +1,6 @@
 import ts from 'typescript'
 import { useContext } from 'preact/hooks'
-import { LineOwner, Verbatim, claim, type NodeProps } from '../../core'
+import { LineOwner, type Ctx, type Edit } from '../../core'
 
 /**
  * Whether nothing but a trailing comment follows the node on its source
@@ -15,28 +15,28 @@ function endsSourceLine(node: ts.Node, sourceFile: ts.SourceFile): boolean {
   return p >= text.length || text[p] === '\n' || text[p] === '\r'
 }
 
+/** The kinds a `;` can terminate: statements, class members, interface and type-literal members. */
+const canEndInSemicolon = (n: ts.Node): n is ts.Statement | ts.ClassElement | ts.TypeElement =>
+  ts.isStatement(n) || ts.isClassElement(n) || ts.isTypeElement(n)
+
 /**
  * Ruby ends a statement with the line, so a `;` that closes a line is
- * noise. This is a variant of the fallback, not a designed component: it
- * shows the node's text like Verbatim but stops before a line-ending
- * semicolon. A designed component for the same node would simply never
- * write one; this covers the many kinds nobody has designed yet.
+ * noise. This is a rule of the theme's fallback (see fallback.tsx), not a
+ * designed component: the node's text is shown as written, minus a
+ * line-ending semicolon. A designed component for the same node would
+ * simply never write one; this covers the many kinds nobody has designed
+ * yet.
  *
  * "Closes a line" is judged where the line comes from: the node owns a
  * Line from `Lines`, or, inside a verbatim region, it ends its source
  * line. The `;` between members of a one-line type literal is neither and
  * stays, since there it separates rather than terminates.
+ *
+ * Runs in the fallback's render, which is how it can read `LineOwner`.
  */
-export function WithoutSemicolon({ node, ctx }: NodeProps) {
-  const { sourceFile } = ctx
+export function closingSemicolon(node: ts.Node, { sourceFile }: Ctx): Edit[] {
   const ownsLine = useContext(LineOwner) === node
-  const closes = sourceFile.text[node.end - 1] === ';' && (ownsLine || endsSourceLine(node, sourceFile))
-  return <Verbatim node={node} ctx={ctx} end={closes ? node.end - 1 : node.end} />
+  const closes =
+    canEndInSemicolon(node) && sourceFile.text[node.end - 1] === ';' && (ownsLine || endsSourceLine(node, sourceFile))
+  return closes ? [{ from: node.end - 1, to: node.end, text: '' }] : []
 }
-
-/** The kinds a `;` can terminate: statements, class members, interface and type-literal members. */
-const canEndInSemicolon = (n: ts.Node): n is ts.Statement | ts.ClassElement | ts.TypeElement =>
-  ts.isStatement(n) || ts.isClassElement(n) || ts.isTypeElement(n)
-
-/** `return 0;` reads as `return 0`. Goes last, so designed components claim first. */
-export const rubySemicolons = claim(canEndInSemicolon, WithoutSemicolon)

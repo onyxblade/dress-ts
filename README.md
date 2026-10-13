@@ -42,8 +42,8 @@ src/core/          building blocks shared by every theme
                    had; withTransforms() scopes transforms to one component's subtree
   identity.ts      nodeId(): a node's identity, the same in any reading of the file; parseNodeId() and
                    nodeById() take a page from the DOM back to the node
-  verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan tags every node
-                   with its kind and identity
+  verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text, with a theme's edits to
+                   the text between children; NodeSpan tags every node with its kind and identity
   layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for,
                    and the line carries that node's identity, so designed components need not
   comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
@@ -57,7 +57,7 @@ src/core/          building blocks shared by every theme
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, `new Foo(a)` as `Foo.new(a)`,
-                   no line-ending `;`
+                   generics as `Set[string]`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
@@ -120,8 +120,8 @@ words inside a mark that are not inside a node span, which is exactly the
 theme's own words: `def`, `end`, `.new`, since every word of the source
 sits in a node span and takes the ink colour back. The page shows the note
 and the node as written when the pointer is on those words. A transform
-that only tags or trims the source text, like `semanticIdentifiers` or
-the Ruby theme's semicolon variant, has no note and leaves no mark.
+that only tags or edits the source text in place, like `semanticIdentifiers`
+or the Ruby theme's fallback, has no note and leaves no mark.
 
 ## The fallback
 
@@ -141,17 +141,31 @@ Two details make the fallback coexist with designed layout:
   first line, so an undesigned `if` block placed under an `Indent` lines up
   with its designed siblings. `Line` and `Indent` reset that scope.
 
-A theme can also vary the fallback for kinds it has not designed. The Ruby
-theme's `WithoutSemicolon` shows a statement's text like `Verbatim` but
-stops before a `;` that closes the line, since Ruby ends a statement with
-the line. Whether the `;` closes a line is a layout question, answered by
-layout: the node owns a `Line` (the `LineOwner` context set by `Lines`),
-or, inside a verbatim region, nothing but a trailing comment follows it in
-the source. A designed component for `return` would never write the `;` in
-the first place; the variant covers the kinds nobody has designed yet.
+A theme can also supply its own fallback for the kinds it has not
+designed. The Ruby theme's `RubyVerbatim` is `Verbatim` with *edits*:
+replacements of source ranges in the text between children, which is the
+text no child's component owns. Each edit is a rule answering for one
+node, and one fallback applies every rule, since a node can need several
+at once (`type Pair<T> = [T, T];` loses its `;` and respells its `<T>`):
 
-A theme whose output is not text would supply its own fallback, such as a
-box showing the source.
+- `closingSemicolon` drops a `;` that closes the line, since Ruby ends a
+  statement with the line. Whether it closes a line is a layout question,
+  answered by layout: the node owns a `Line` (the `LineOwner` context set
+  by `Lines`), or, inside a verbatim region, nothing but a trailing comment
+  follows it in the source.
+- `squareTypeLists` shows a type parameter or argument list in Ruby's
+  brackets, `Set[string]`, `type Pair[T]`, `f[T](x)`. The parser leaves a
+  list's range between its delimiters, so the `<` before it and the `>`
+  after it sit in the gaps, where an edit can reach them; a nested list
+  belongs to a nested node, which handles its own.
+
+A designed component for `return` or for a type reference would never
+write the `;` or the `<` in the first place, and the designed ones write
+`[` themselves through the theme's `TypeList`; the rules cover the kinds
+nobody has designed yet.
+
+A theme whose output is not text would supply a fallback of its own kind,
+such as a box showing the source.
 
 ## Comments
 

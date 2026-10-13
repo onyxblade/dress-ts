@@ -1,5 +1,6 @@
 import ts from 'typescript'
-import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../core'
+import { Indent, Line, Lines, Render, claim, type NodeProps } from '../../core'
+import { TypeList } from './generics'
 
 /** A class laid out from its fields: header line, members in an Indent, `end`. */
 export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration>) {
@@ -12,13 +13,7 @@ export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration>) {
           </>
         ))}
         class{node.name && <> <Render node={node.name} ctx={ctx} /></>}
-        {node.typeParameters && (
-          <>
-            {'<'}
-            <Join nodes={node.typeParameters} sep=", " ctx={ctx} />
-            {'>'}
-          </>
-        )}
+        <TypeList nodes={node.typeParameters} ctx={ctx} />
         {node.heritageClauses?.map((h) => (
           <>
             {' '}

@@ -68,26 +68,47 @@ export const VerbatimScope = createContext<number | null>(null)
  * Multi-line text is shown relative to the indentation of its first line,
  * so a verbatim statement placed under a layout `Indent` lines up.
  *
- * `end` lets a theme's fallback variant stop short of the node's last
- * characters, e.g. a closing `;`, without re-implementing the splice.
+ * `edits` let a theme's fallback variant change the text between
+ * children without re-implementing the splice: drop a closing `;`, show
+ * `<T>` as `[T]`. An edit replaces one source range with a string, and
+ * must lie within a gap; one reaching into a child is left unapplied,
+ * since the child's component owns that text.
  */
-export function Verbatim({ node, ctx, end = node.end }: NodeProps & { end?: number }) {
+export interface Edit {
+  from: number
+  to: number
+  text: string
+}
+
+/** The text of `[from, to)` with the edits inside it applied, in position order. */
+function edited(text: string, from: number, to: number, edits: readonly Edit[]): string {
+  let out = ''
+  let cursor = from
+  for (const e of [...edits].filter((e) => e.from >= from && e.to <= to).sort((a, b) => a.from - b.from)) {
+    out += text.slice(cursor, e.from) + e.text
+    cursor = e.to
+  }
+  return out + text.slice(cursor, to)
+}
+
+export function Verbatim({ node, ctx, edits = [] }: NodeProps & { edits?: readonly Edit[] }) {
   const { sourceFile } = ctx
   const text = sourceFile.text
   const inherited = useContext(VerbatimScope)
   const start = startOf(node, sourceFile)
   const width = inherited ?? lineIndentAt(text, start)
 
+  const gap = (from: number, to: number) => dedent(edited(text, from, to, edits), width)
   const parts: preact.ComponentChildren[] = []
   let cursor = start
   for (const child of childNodes(node)) {
     const childStart = startOf(child, sourceFile)
     if (childStart < cursor) continue // defensive: overlapping node
-    if (childStart > cursor) parts.push(dedent(text.slice(cursor, childStart), width))
+    if (childStart > cursor) parts.push(gap(cursor, childStart))
     parts.push(<Dispatch key={child.pos} node={child} ctx={ctx} />)
     cursor = child.end
   }
-  if (cursor < end) parts.push(dedent(text.slice(cursor, end), width))
+  if (cursor < node.end) parts.push(gap(cursor, node.end))
 
   const span = <NodeSpan node={node}>{parts}</NodeSpan>
   return inherited === null ? <VerbatimScope.Provider value={width}>{span}</VerbatimScope.Provider> : span

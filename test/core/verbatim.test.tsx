@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import ts from 'typescript'
+import { Verbatim, claim, type Edit, type NodeProps } from '../../src/core'
 import { renderHtml, renderText } from '../../src/core/testing'
 
 describe('Verbatim', () => {
@@ -35,5 +37,23 @@ describe('Verbatim', () => {
     const html = renderHtml('const a = 1')
     expect(html).toContain('data-node="VariableStatement@0-11"')
     expect(html).toContain('data-node="NumericLiteral@9-11"')
+  })
+
+  describe('edits', () => {
+    const withEdits = <N extends ts.Node>(is: (n: ts.Node) => n is N, edits: (node: N) => Edit[]) =>
+      claim(is, (p: NodeProps<N>) => <Verbatim {...p} edits={edits(p.node)} />)
+    const gapBefore = (child: ts.Node, text: string) => ({ from: child.getStart() - 3, to: child.getStart(), text })
+
+    it('replace source ranges between children, in position order', () => {
+      const declaration = withEdits(ts.isVariableDeclaration, (n) => [gapBefore(n.initializer!, ' := ')])
+      const statement = withEdits(ts.isVariableStatement, (n) => [{ from: n.end - 1, to: n.end, text: '' }])
+      expect(renderText('const a = 1, b = 2;', [declaration, statement])).toBe('const a := 1, b := 2')
+    })
+
+    it('leave an edit that reaches into a child unapplied', () => {
+      // `const a = 1` is the declaration list, a child of the statement; an edit over its `const` is not the statement's to make.
+      const statement = withEdits(ts.isVariableStatement, (n) => [{ from: n.getStart(), to: n.getStart() + 5, text: 'let' }])
+      expect(renderText('const a = 1', [statement])).toBe('const a = 1')
+    })
   })
 })
