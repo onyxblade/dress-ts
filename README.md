@@ -64,7 +64,7 @@ src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing 
                    not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
                    hovering a node on one side marks the same node on the other, by nodeId, and shows a card
                    at once: the quick info of the token under the pointer, or on a theme's own words, the
-                   reading they belong to and the node as written
+                   reading they belong to and the node as written; a click pins the card, Escape lets it go
 src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```

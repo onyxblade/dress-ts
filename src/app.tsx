@@ -104,52 +104,71 @@ function readingAt(target: EventTarget | null, sourceFile: ts.SourceFile) {
 
 type Card = { kind: 'info'; info: ts.QuickInfo } | { kind: 'reading'; note: string; written: string }
 
+/** The card for a pointer position: what it says, and where it hangs. */
+function cardAt(e: MouseEvent, service: ts.LanguageService, fileName: string): Shown | null {
+  const h = hovered(e.target)
+  const info = h && quickInfoAt(service, fileName, h.range.end)
+  if (info) {
+    const r = h.el.getBoundingClientRect()
+    return { card: { kind: 'info', info }, at: { left: r.left, top: r.bottom }, pinned: false }
+  }
+  const reading = readingAt(e.target, service.getProgram()!.getSourceFile(fileName)!)
+  // A reading mark has no box; anchor to the pointer.
+  return reading ? { card: { kind: 'reading', ...reading }, at: { left: e.clientX, top: e.clientY + 16 }, pinned: false } : null
+}
+
+interface Shown {
+  card: Card
+  at: { left: number; top: number }
+  /** Held in place by a click: hovering leaves it alone, and it can be read and copied from. */
+  pinned: boolean
+}
+
 /**
  * A card below the pointer, shown the moment it arrives: the quick info of
  * the token under it, or, on words a theme wrote, the reading they belong
  * to. Both panes show the same file, so one card serves both and a
- * position means the same thing on either side. The card owns the state,
- * so hovering re-renders the card and nothing else; the panes are large
- * and nothing about them changes.
+ * position means the same thing on either side. A click pins the card
+ * where it is, so it can be read at leisure; a click or Escape lets it go.
+ * The card owns the state, so hovering re-renders the card and nothing
+ * else; the panes are large and nothing about them changes.
  */
 function Hover({ root, service, fileName }: { root: { current: HTMLElement | null }; service: ts.LanguageService; fileName: string }) {
-  const [card, setCard] = useState<{ card: Card; at: { left: number; top: number } } | null>(null)
+  const [shown, setShown] = useState<Shown | null>(null)
   useEffect(() => {
     const el = root.current
     if (!el) return
-    const over = (e: MouseEvent) => {
-      const h = hovered(e.target)
-      const info = h && quickInfoAt(service, fileName, h.range.end)
-      const sourceFile = service.getProgram()!.getSourceFile(fileName)!
-      const reading = !info && readingAt(e.target, sourceFile)
-      if (info) {
-        const r = h.el.getBoundingClientRect()
-        setCard({ card: { kind: 'info', info }, at: { left: r.left, top: r.bottom } })
-      } else if (reading) {
-        // A reading mark has no box; anchor to the pointer.
-        setCard({ card: { kind: 'reading', ...reading }, at: { left: e.clientX, top: e.clientY + 16 } })
-      } else {
-        setCard(null)
-      }
+    const over = (e: MouseEvent) => setShown((prev) => (prev?.pinned ? prev : cardAt(e, service, fileName)))
+    const leave = () => setShown((prev) => (prev?.pinned ? prev : null))
+    const click = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.code')) return
+      setShown((prev) => (prev ? { ...prev, pinned: !prev.pinned } : prev))
     }
-    const leave = () => setCard(null)
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShown(null)
+    }
     el.addEventListener('mouseover', over)
     el.addEventListener('mouseleave', leave)
+    el.addEventListener('click', click)
+    document.addEventListener('keydown', key)
     return () => {
       el.removeEventListener('mouseover', over)
       el.removeEventListener('mouseleave', leave)
+      el.removeEventListener('click', click)
+      document.removeEventListener('keydown', key)
     }
   }, [root, service, fileName])
-  if (!card) return null
-  const left = Math.min(card.at.left, Math.max(0, window.innerWidth - 480))
+  if (!shown) return null
+  const { card, at, pinned } = shown
+  const left = Math.min(at.left, Math.max(0, window.innerWidth - 480))
   return (
-    <div class="hover" style={`left: ${left}px; top: ${card.at.top + 4}px`}>
-      {card.card.kind === 'info' ? (
-        <QuickInfo info={card.card.info} />
+    <div class={pinned ? 'hover pinned' : 'hover'} style={`left: ${left}px; top: ${at.top + 4}px`}>
+      {card.kind === 'info' ? (
+        <QuickInfo info={card.info} />
       ) : (
         <div class="reading-info">
-          <p class="note">{card.card.note}</p>
-          <pre class="written">{card.card.written}</pre>
+          <p class="note">{card.note}</p>
+          <pre class="written">{card.written}</pre>
         </div>
       )}
     </div>

@@ -108,6 +108,12 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }
+/* Pinned by a click (see app.tsx Hover): stays put, and its text can be selected. */
+.hover.pinned {
+  pointer-events: auto;
+  border-color: #aaa;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
 .quick-info .signature {
   margin: 0;
   white-space: pre-wrap;
