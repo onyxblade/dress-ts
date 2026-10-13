@@ -65,7 +65,7 @@ export function htmlToText(html: string): string {
       atLineStart = ch === '\n'
     }
   }
-  // A tag, with `>` allowed inside quoted attribute values (a type in a title), or text.
+  // A tag, with `>` allowed inside quoted attribute values, or text.
   const re = /<\/?[a-z][^\s>]*(?:\s+[^\s=>]+(?:="[^"]*")?)*\s*\/?>|[^<]+/g
   for (const m of html.match(re) ?? []) {
     if (m[0] !== '<') {

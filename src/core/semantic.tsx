@@ -31,19 +31,15 @@ export function roleOf(node: ts.Identifier, checker: ts.TypeChecker): Role | und
 }
 
 /**
- * An identifier tagged with its role, and for a value, its type as a hover
- * title: the smallest reading effect the checker buys. The text is the
- * source's own, so a file with no other transform still renders to itself.
+ * An identifier tagged with its role: the smallest reading effect the
+ * checker buys. The text is the source's own, so a file with no other
+ * transform still renders to itself. What the identifier's type is belongs
+ * to the hover, see quickInfo.tsx; the tag is what the page can colour.
  */
 export function SemanticIdentifier({ node, ctx }: NodeProps<ts.Identifier>) {
   const { checker, sourceFile } = ctx
-  const role = roleOf(node, checker)
-  const title =
-    role === 'value' || role === 'function'
-      ? checker.typeToString(checker.getTypeAtLocation(node), node, ts.TypeFormatFlags.NoTruncation)
-      : undefined
   return (
-    <NodeSpan node={node} data-role={role} title={title}>
+    <NodeSpan node={node} data-role={roleOf(node, checker)}>
       {sourceFile.text.slice(node.getStart(sourceFile), node.end)}
     </NodeSpan>
   )

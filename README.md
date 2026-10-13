@@ -44,8 +44,10 @@ src/core/          building blocks shared by every theme
   layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for,
                    and the line carries that node's identity, so designed components need not
   comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
-  program.ts       createMemoryProgram(): a ts.Program over files given as text, libs supplied by the caller
-  semantic.tsx     semanticIdentifiers: every identifier tagged with its role from the checker, its type as a title
+  program.ts       createMemoryService(): a ts.LanguageService over files given as text, libs supplied by the
+                   caller; createMemoryProgram() is its program, for a caller that only renders
+  semantic.tsx     semanticIdentifiers: every identifier tagged with its role from the checker
+  quickInfo.tsx    quickInfoAt(): what an editor shows on hover, from the service; QuickInfo lays it out
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
   testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
                    it out of the bundle
@@ -57,7 +59,8 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
                    not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
-                   hovering a node on one side marks the same node on the other, by nodeId
+                   hovering a node on one side marks the same node on the other, by nodeId, and shows the
+                   quick info of the token under the pointer, at once, in a card of the page's own
 src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```
@@ -177,20 +180,24 @@ line layout for such lists is still to be designed.
 
 The syntax tree cannot tell `Options` the interface from `options` the
 parameter, or say what `await readFile(path)` evaluates to. The type
-checker can, and it is the compiler's own: `ts.createProgram` over the file
-plus the compiler's `lib.*.d.ts`, then `program.getTypeChecker()`. Nothing
-is written to the tree a component sees; the binder keeps its symbols in
+checker can, and it is the compiler's own: a program over the file plus
+the compiler's `lib.*.d.ts`, then `program.getTypeChecker()`. Nothing is
+written to the tree a component sees; the binder keeps its symbols in
 fields of its own.
 
-`createMemoryProgram(files, libs)` in `program.ts` is the whole bridge: a
-`CompilerHost` that answers from a map of file texts and asks the caller
-for lib text by name. Where lib text comes from is the environment's
-business. Tests read it from the installed `typescript` package;
-`main.tsx` bundles the ES2022 chain with `import.meta.glob` (about half a
-megabyte next to the compiler's nine; DOM would add two more). Lib
-SourceFiles are parsed once per process, so a program per test costs a
-few milliseconds. `createCtx(program, fileName, resolve)` takes the file
-from the program, since the checker only knows the nodes it bound.
+`createMemoryService(files, libs)` in `program.ts` is the whole bridge: a
+`LanguageServiceHost` that answers from a map of file texts and asks the
+caller for lib text by name. The service builds the program components
+render from (`createMemoryProgram` is that program, for a caller that
+needs nothing else) and answers the editor-level questions that take a
+file *and* a position, quick info first. Where lib text comes from is the
+environment's business. Tests read it from the installed `typescript`
+package; `main.tsx` bundles the ES2022 chain with `import.meta.glob` (about
+half a megabyte next to the compiler's nine; DOM would add two more). A
+shared `DocumentRegistry` parses each lib once per process, so a service
+per test costs a few milliseconds. `createCtx(program, fileName, resolve)`
+takes the file from the program, since the checker only knows the nodes it
+bound.
 
 Imports the program cannot see (`node:fs` in the sample) are diagnostics,
 and what they bring in is typed `any`. The checker answers everything else
@@ -199,21 +206,28 @@ around them, so a component treats `any` as "unknown", never as a fact.
 `semanticIdentifiers` in `semantic.tsx` is the first reading effect built
 on it: a transform that claims every identifier and tags it with its role
 (`class`, `type`, `namespace`, `function`, `value`, `unresolved`, resolved
-through imports), with the type of a value as a hover title. Since the
-checker answers at the point of use, the title of `x` after `if (x ===
-null) return` is already narrowed. The transform never changes the text a
-reader sees, so a theme opts in by adding it to its list, as the Ruby theme
-does. A transform that *decides* by type, say rendering a call differently
-when it returns a `Promise`, has `ctx` in hand already: `(next) => (node,
-ctx) => ...`.
+through imports). The transform never changes the text a reader sees, so
+a theme opts in by adding it to its list, as the Ruby theme does. A
+transform that *decides* by type, say rendering a call differently when it
+returns a `Promise`, has `ctx` in hand already: `(next) => (node, ctx) =>
+...`.
+
+What a token *is* belongs to the hover, and that is the service's quick
+info, the same answer an editor shows: the declaration form, `(method)
+Walker<T>.walk(path?: string): AsyncGenerator<string>`, then the JSDoc and
+its tags. Since the service answers at a position, `x` after `if (x ===
+null) return` is already narrowed. `quickInfoAt(service, fileName, end)`
+in `quickInfo.tsx` asks for the token ending at `end` and the page gets
+`end` from the hovered span's `nodeId`, so the rendering carries nothing
+but identity: the card is composed when the pointer arrives, on either
+side, and `QuickInfo` lays it out with each display part tagged by kind
+for the stylesheet.
 
 Further effects the same ingredients make possible: inferred types shown
 inline where an annotation is missing; a link from each use to its
 declaration (`symbol.declarations`); the resolved signature of a call among
 its overloads; the file's semantic diagnostics placed on the statement
-that owns the line. For references across a project or quick info, the
-next layer up is `ts.createLanguageService`, which takes a similar in-memory
-host and exposes the same program.
+that owns the line; references across the files the service is given.
 
 ## Scoping
 

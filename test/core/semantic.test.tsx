@@ -3,7 +3,7 @@ import { semanticIdentifiers } from '../../src/core'
 import { renderHtml, renderText } from '../../src/core/testing'
 
 const html = (text: string) => renderHtml(text, [semanticIdentifiers])
-const roles = (text: string) => [...html(text).matchAll(/data-role="(\w+)"(?: title="[^"]*")?>(\w+)</g)].map((m) => `${m[2]}:${m[1]}`)
+const roles = (text: string) => [...html(text).matchAll(/data-role="(\w+)">(\w+)</g)].map((m) => `${m[2]}:${m[1]}`)
 
 describe('semanticIdentifiers', () => {
   it('tells type names from value names, at declaration and at use', () => {
@@ -38,17 +38,6 @@ describe('semanticIdentifiers', () => {
 
   it('an import names what it imports, or is unresolved', () => {
     expect(roles("import { x } from 'nowhere'\nx")).toEqual(['x:unresolved', 'x:unresolved'])
-  })
-
-  it('carries the type of a value as a title, with the full signature', () => {
-    expect(html('const f = (a: number) => a > 0')).toContain('title="(a: number) => boolean"')
-    expect(html('const f = (a: number) => a > 0')).not.toContain('title="true"')
-  })
-
-  it('shows the narrowed type at the point of use', () => {
-    const src = 'function g(x: number | null) {\n  if (x === null) return 0\n  return x\n}'
-    expect(html(src)).toContain('title="number | null"')
-    expect(html(src)).toContain('title="number"')
   })
 
   it('changes nothing a reader sees', () => {

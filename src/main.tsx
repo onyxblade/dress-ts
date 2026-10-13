@@ -1,5 +1,5 @@
 import { render } from 'preact'
-import { createMemoryProgram } from './core'
+import { createMemoryService } from './core'
 import { App } from './app'
 import sampleText from './sample.ts?raw'
 
@@ -16,6 +16,6 @@ const libText = import.meta.glob(
 ) as Record<string, string>
 const libs = (name: string) => libText[`/node_modules/typescript/lib/${name}`]
 
-const program = createMemoryProgram({ 'sample.ts': sampleText }, libs)
+const service = createMemoryService({ 'sample.ts': sampleText }, libs)
 
-render(<App program={program} fileName="sample.ts" />, document.getElementById('app')!)
+render(<App service={service} fileName="sample.ts" />, document.getElementById('app')!)

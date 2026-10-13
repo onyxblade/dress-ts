@@ -1,6 +1,17 @@
 import type ts from 'typescript'
-import { useState } from 'preact/hooks'
-import { Render, Verbatim, compose, createCtx, semanticIdentifiers, type Theme, type Transform } from './core'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import {
+  QuickInfo,
+  Render,
+  Verbatim,
+  compose,
+  createCtx,
+  parseNodeId,
+  quickInfoAt,
+  semanticIdentifiers,
+  type Theme,
+  type Transform,
+} from './core'
 import { themes } from './themes'
 
 /**
@@ -65,22 +76,70 @@ function markPeers(root: HTMLElement, target: EventTarget | null) {
   root.querySelectorAll(`[data-node="${id}"]`).forEach((el) => el.classList.add('peer'))
 }
 
+/** The node under the pointer: its span and the range its identity encodes. */
+function hovered(target: EventTarget | null) {
+  const el = (target as Element | null)?.closest?.('[data-node]')
+  const range = el && parseNodeId(el.getAttribute('data-node')!)
+  return range ? { el, range } : undefined
+}
+
+/**
+ * The quick info of the token under the pointer, as a card below it, shown
+ * the moment the pointer arrives. Both panes show the same file, so one
+ * card serves both and a position means the same thing on either side.
+ * The card owns the state, so hovering re-renders the card and nothing
+ * else; the panes are large and nothing about them changes.
+ */
+function Hover({ root, service, fileName }: { root: { current: HTMLElement | null }; service: ts.LanguageService; fileName: string }) {
+  const [card, setCard] = useState<{ info: ts.QuickInfo; rect: DOMRect } | null>(null)
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    const over = (e: MouseEvent) => {
+      const h = hovered(e.target)
+      const info = h && quickInfoAt(service, fileName, h.range.end)
+      setCard(info ? { info, rect: h.el.getBoundingClientRect() } : null)
+    }
+    const leave = () => setCard(null)
+    el.addEventListener('mouseover', over)
+    el.addEventListener('mouseleave', leave)
+    return () => {
+      el.removeEventListener('mouseover', over)
+      el.removeEventListener('mouseleave', leave)
+    }
+  }, [root, service, fileName])
+  if (!card) return null
+  const { info, rect } = card
+  const left = Math.min(rect.left, Math.max(0, window.innerWidth - 480))
+  return (
+    <div class="hover" style={`left: ${left}px; top: ${rect.bottom + 4}px`}>
+      <QuickInfo info={info} />
+    </div>
+  )
+}
+
 /** One file, two readings side by side. Each side picks its view. */
-export function App({ program, fileName }: { program: ts.Program; fileName: string }) {
+export function App({ service, fileName }: { service: ts.LanguageService; fileName: string }) {
+  const program = service.getProgram()!
   const [sides, setSides] = useState(readSides)
   const [left, right] = sides
   const set = (next: [View, View]) => {
     writeSides(...next)
     setSides(next)
   }
+  const main = useRef<HTMLElement>(null)
   return (
-    <main
-      class="compare"
-      onMouseOver={(e) => markPeers(e.currentTarget, e.target)}
-      onMouseLeave={(e) => markPeers(e.currentTarget, null)}
-    >
-      <Pane program={program} fileName={fileName} view={left} onChange={(v) => set([v, right])} />
-      <Pane program={program} fileName={fileName} view={right} onChange={(v) => set([left, v])} />
-    </main>
+    <>
+      <main
+        ref={main}
+        class="compare"
+        onMouseOver={(e) => markPeers(e.currentTarget, e.target)}
+        onMouseLeave={(e) => markPeers(e.currentTarget, null)}
+      >
+        <Pane program={program} fileName={fileName} view={left} onChange={(v) => set([v, right])} />
+        <Pane program={program} fileName={fileName} view={right} onChange={(v) => set([left, v])} />
+      </main>
+      <Hover root={main} service={service} fileName={fileName} />
+    </>
   )
 }

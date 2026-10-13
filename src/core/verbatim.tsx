@@ -23,12 +23,18 @@ export function nodeId(node: ts.Node): string {
   return `${kindName(node.kind)}@${node.pos}-${node.end}`
 }
 
+/** The range back out of an identity, for code that has only the DOM. */
+export function parseNodeId(id: string): { kind: string; pos: number; end: number } | undefined {
+  const m = /^(\w+)@(\d+)-(\d+)$/.exec(id)
+  return m ? { kind: m[1], pos: Number(m[2]), end: Number(m[3]) } : undefined
+}
+
 /** The kind-tagged span every node component wraps itself in. */
 export function NodeSpan({
   node,
   children,
   ...attrs
-}: { node: ts.Node; children?: preact.ComponentChildren; title?: string } & Record<`data-${string}`, string | undefined>) {
+}: { node: ts.Node; children?: preact.ComponentChildren } & Record<`data-${string}`, string | undefined>) {
   return (
     <span data-kind={kindName(node.kind)} data-node={nodeId(node)} {...attrs}>
       {children}

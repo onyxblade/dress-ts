@@ -24,6 +24,10 @@ export class Walker<T extends object> {
   }
 }
 
+/**
+ * The magnitude of `x`, with nothing read as zero.
+ * @param x a number, or the two ways of having none
+ */
 export function guard(x: number | null | undefined): number {
   if (x === null) return 0
   if (x === undefined) return 0

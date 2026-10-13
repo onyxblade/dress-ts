@@ -55,10 +55,51 @@ body {
   outline: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 2px;
 }
-/* The same node, hovered on the other side (see app.tsx markPeers). */
-.peer {
-  background: rgba(255, 200, 0, 0.25);
-  border-radius: 2px;
+/* Quick info of the token under the pointer (see app.tsx Hover, core/quickInfo.tsx). */
+.hover {
+  position: fixed;
+  z-index: 1;
+  max-width: 480px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+.quick-info .signature {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.quick-info .doc,
+.quick-info .tag {
+  margin: 0.5rem 0 0;
+  font-family: system-ui, sans-serif;
+  color: #444;
+  white-space: pre-wrap;
+}
+.quick-info .tag b {
+  color: #7a4d9c;
+}
+[data-part='keyword'] {
+  color: #7a4d9c;
+}
+[data-part='className'],
+[data-part='interfaceName'],
+[data-part='typeAliasName'],
+[data-part='typeParameterName'],
+[data-part='enumName'] {
+  color: #1a6b8a;
+}
+[data-part='moduleName'] {
+  color: #7a4d9c;
+}
+[data-part='functionName'],
+[data-part='methodName'] {
+  color: #8a4b1a;
+}
+[data-part='stringLiteral'] {
+  color: #2a7a2a;
 }
 /* What an identifier names, per the checker (see core/semantic.tsx). */
 [data-role='class'],

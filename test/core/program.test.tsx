@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import ts from 'typescript'
-import { Verbatim, compose, createCtx, createMemoryProgram } from '../../src/core'
+import { Verbatim, compose, createCtx, createMemoryProgram, createMemoryService } from '../../src/core'
 import { nodeLibs, programFor, renderText } from '../../src/core/testing'
 
 describe('createMemoryProgram', () => {
@@ -25,6 +25,15 @@ describe('createMemoryProgram', () => {
     const checker = program.getTypeChecker()
     const decl = (program.getSourceFile('b.ts')!.statements[1] as ts.VariableStatement).declarationList.declarations[0]
     expect(checker.typeToString(checker.getTypeAtLocation(decl.name))).toBe('1')
+  })
+})
+
+describe('createMemoryService', () => {
+  it('is what the program comes from, so both see the same file', () => {
+    const service = createMemoryService({ 'x.ts': 'let x = 1' }, nodeLibs)
+    const program = service.getProgram()!
+    expect(program.getSourceFile('x.ts')?.text).toBe('let x = 1')
+    expect(service.getQuickInfoAtPosition('x.ts', 4)?.textSpan).toEqual({ start: 4, length: 1 })
   })
 })
 
