@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -35,6 +35,7 @@ The order is outermost first. The designed components claim their kinds;
 | `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
 | `generics.tsx` | `Set<string>`, `type Pair<T>`, `f<T>(x)` | `Set[string]`, `type Pair[T]`, `f[T](x)` |
 | `generics.tsx` | `T extends object = {}` | `T < object = {}` |
+| `equality.tsx` | `a === b`, `a !== b` | `a == b`, `a != b` |
 | `semicolon.tsx` | `f();` at the end of a line, `a: T,` in an interface | `f()`, `a: T` |
 
 Every reading is marked: `claim`'s note, or an edit's, is what the page
@@ -144,6 +145,15 @@ modifier itself and renders nothing, and the fallback rule
 `droppedModifiers` drops the space that followed it, the only part in
 the parent's gap text. A transform list with the fallback but without
 `rubyModifier` would drop the space and keep the word.
+
+### Equality
+
+Ruby's `==` is already the strict one, so `===` reads as `==` and `!==`
+as `!=`. The operator of a binary expression is a node of its own, so
+`rubyEquality` claims the token and nothing else; the expression around
+it stays with whoever has it. A TypeScript `==` is left as written, and
+looks the same, but it carries no mark, where the read `==` says `===`
+on hover.
 
 ### Generics
 
