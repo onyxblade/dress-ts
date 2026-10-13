@@ -88,13 +88,14 @@ export function Reading({ node, note, children }: { node: ts.Node; note: string;
 
 /**
  * The common transform: nodes matching a type guard are rendered by a
- * component typed for that node. Everything else falls through. A
- * `reading` note says, in a line, what the component shows instead of the
+ * component typed for that node. Everything else falls through. The guard
+ * gets the ctx too, for a claim that depends on what the checker says and
+ * not on syntax alone. A `reading` note says, in a line, what the component shows instead of the
  * source (`new Foo(a) reads as Foo.new(a)`), and marks its output as a
  * Reading; a component that only tags or trims the source text has none.
  */
 export function claim<N extends ts.Node>(
-  is: (node: ts.Node) => node is N,
+  is: (node: ts.Node, ctx: Ctx) => node is N,
   Component: ComponentType<NodeProps<N>>,
   reading?: string,
 ): Transform {
@@ -105,5 +106,5 @@ export function claim<N extends ts.Node>(
         </Reading>
       )
     : (Component as NodeComponent)
-  return (next) => (node, ctx) => (is(node) ? Designed : next(node, ctx))
+  return (next) => (node, ctx) => (is(node, ctx) ? Designed : next(node, ctx))
 }

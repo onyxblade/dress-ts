@@ -57,7 +57,7 @@ src/core/          building blocks shared by every theme
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, `new Foo(a)` as `Foo.new(a)`,
-                   generics as `Set[string]`, no line-ending `;`
+                   generics as `Set[string]`, `this` as `self` and a field `this.x` as `@x`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
@@ -247,6 +247,12 @@ bound.
 Imports the program cannot see (`node:fs` in the sample) are diagnostics,
 and what they bring in is typed `any`. The checker answers everything else
 around them, so a component treats `any` as "unknown", never as a fact.
+
+A claim can depend on the checker too: `claim`'s guard gets the ctx. The
+Ruby theme's `rubyInstanceVariable` takes `this.x` only when the checker
+says `x` is a field, and shows it as `@x`; `this.walk(p)` on a method
+falls through to the fallback, where `this` reads as `self`, since Ruby's
+`@walk(p)` is not a call.
 
 `semanticIdentifiers` in `semantic.tsx` is the first reading effect built
 on it: a transform that claims every identifier and tags it with its role
