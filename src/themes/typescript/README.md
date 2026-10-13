@@ -1,8 +1,9 @@
 # The TypeScript theme
 
 TypeScript laid out from its AST, with imports moved to hover, supported
-switches read as independent arms, and strict comparisons shortened in files
-without loose equality. An opt-in ESLint preset enforces the reading contracts;
+switches read as independent arms, strict comparisons shortened in files
+without loose equality, and binding modifiers folded into declaration names.
+An opt-in ESLint preset enforces the switch and equality reading contracts;
 the renderer also checks the source independently.
 
 Choose `typescript` in either demo pane, or open
@@ -25,6 +26,7 @@ also owns the layout of declarations and control flow.
 | `switch.tsx` | Independent switch arms, with ordinary TS layout for unsupported switches |
 | `switchAnalysis.ts` | The switch contract shared by the theme and lint rule |
 | `equality.tsx` | Shortened strict comparisons, guarded by a scan of the entire source file |
+| `bindings.tsx` / `bindings.css` | Declaration-only name marks for `const` and named `readonly` properties |
 | `eslint.ts` | The opt-in `dress/switch-reading` rule, `eqeqeq`, and flat configs |
 | `try.tsx` | Try, catch with or without a binding, and finally |
 | `enum.tsx` | Enums, member initializers, and comma separators |
@@ -82,6 +84,46 @@ does not disappear with the first import. Dynamic `import()` expressions,
 stay in the code. Hiding declarations is a reading decision: the displayed
 text is no longer a standalone, equivalent TypeScript program. The program
 and checker still use the original, unchanged AST.
+
+## Binding modifiers on names
+
+The theme omits `const` from variable declarations and `readonly` from
+named property declarations. Their declaration names carry a thin underline:
+
+| Source | Display | Name mark |
+| --- | --- | --- |
+| `const count = 1` | `count = 1` | Solid underline on `count` |
+| `private readonly items: Item[]` | `private items: Item[]` | Dotted underline on `items` |
+| `const { key: local } = input` | `{ key: local } = input` | Solid underline on `local`, none on `key` |
+| `constructor(readonly value: T) {}` | `constructor(value: T) {}` | Dotted underline on `value` |
+
+Marks appear only at declarations; references retain their usual appearance.
+They preserve the name's semantic color and node identity. Hover or click a
+marked name for its usual quick info, the mark's explanation, and the original
+declaration. Constructor parameter properties explicitly explain that the
+parameter also declares and initializes a field. Core `Reading`'s optional
+`detail` flag lets these narrow name annotations accompany token quick info;
+ordinary enclosing readings still defer to that info.
+
+`const` applies to bindings, not deep immutability of their values. `readonly`
+is a TypeScript property restriction, also not deep immutability. The two marks
+deliberately keep that distinction. Neither needs a lint prerequisite.
+
+All local names in nested destructuring and loop declarations are marked;
+property keys, default expressions, and later uses are not. Empty destructuring
+with no bound names retains `const`. `let`, `var`, `using`, `await using`,
+`as const`, `const enum`, and `const` type parameters remain explicit.
+
+Named class fields, interface/type-literal properties, and constructor parameter
+properties support the readonly mark, including private, quoted, and numeric
+names. Computed names and index signatures retain `readonly`, as do type
+operators (`readonly T[]`, tuples) and mapped-type modifiers. Other modifiers,
+types, decorators, punctuation, and all comments remain visible. A newline
+that makes `readonly` a property name rather than a modifier is left alone.
+
+These are visual readings: copying the displayed plain text omits the name
+marks and does not reproduce an equivalent TS program. The source view and
+the program's AST retain the original declarations.
 
 ## Strict equality reading
 
@@ -145,12 +187,14 @@ switch (token.kind) {
 switch (token.kind) {
   'space' | 'newline' => skip()
   'number' => {
-    const value = parse(token)
+    value = parse(token)
     return value
   }
   default => throw new Error('unexpected token')
 }
 ```
+
+The displayed `value` declaration also has the solid `const` underline.
 
 These are statement arms: `return`, `throw`, and `continue` stay explicit.
 There is no implicit return value and no promise of exhaustiveness. If no

@@ -159,7 +159,9 @@ body {
 .quick-info .tag b {
   color: #7a4d9c;
 }
-.quick-info + .import-info {
+.quick-info + .import-info,
+.quick-info + .reading-info,
+.import-info + .reading-info {
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid #e4e4e4;

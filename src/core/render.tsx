@@ -78,9 +78,15 @@ export function withTransforms(ctx: Ctx, transforms: Transform[]): Ctx {
  * node and show what was written. The words inside it that are not in a
  * node span are the component's own, which is what the stylesheet tints.
  */
-export function Reading({ node, note, children }: { node: ts.Node; note: string; children?: preact.ComponentChildren }) {
+export function Reading({ node, note, detail, children }: {
+  node: ts.Node
+  note: string
+  /** Keep this name annotation visible alongside a descendant token's quick info. */
+  detail?: boolean
+  children?: preact.ComponentChildren
+}) {
   return (
-    <span class="reading" data-reading={note} data-node={nodeId(node)}>
+    <span class="reading" data-reading={note} data-reading-detail={detail ? '' : undefined} data-node={nodeId(node)}>
       {children}
     </span>
   )

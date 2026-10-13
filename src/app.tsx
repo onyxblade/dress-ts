@@ -139,16 +139,26 @@ function written(node: ts.Node, sourceFile: ts.SourceFile): string {
  * it, since the Line laid out for a statement wraps the mark. The nearest
  * mark around the pointer would be wrong: beside the header of an
  * `if ... end` the pointer is on the if's Line, yet inside the mark of the
- * function around it. On a source token the quick info wins, see below.
+ * function around it. On a source token quick info wins, unless a narrow
+ * annotation explicitly opts into accompanying it with `data-reading-detail`.
  */
-function readingOf({ el, id }: Hovered, sourceFile: ts.SourceFile) {
+function readingOf({ el, id }: Hovered, sourceFile: ts.SourceFile, detail = false) {
   const own = `[data-reading][data-node="${id}"]`
-  const mark = el.closest(own) ?? el.querySelector(own)
-  const node = mark && nodeById(sourceFile, id)
+  const mark = detail ? el.closest('[data-reading-detail]') : el.closest(own) ?? el.querySelector(own)
+  const node = mark && nodeById(sourceFile, mark.getAttribute('data-node')!)
   return node ? { note: mark.getAttribute('data-reading')!, written: written(node, sourceFile) } : undefined
 }
 
-type Card = { kind: 'info'; info?: ts.QuickInfo; imports: StaticImport[] } | { kind: 'reading'; note: string; written: string }
+interface ReadingDetail {
+  note: string
+  written: string
+}
+
+type Card = { kind: 'info'; info?: ts.QuickInfo; imports: StaticImport[]; reading?: ReadingDetail } | ({ kind: 'reading' } & ReadingDetail)
+
+function ReadingInfo({ note, written }: ReadingDetail) {
+  return <div class="reading-info"><p class="note">{note}</p><pre class="written">{written}</pre></div>
+}
 
 /** The card for a pointer position: what it says, and where it hangs. */
 function cardAt(e: MouseEvent | FocusEvent, service: ts.LanguageService, fileName: string): Shown | null {
@@ -164,11 +174,12 @@ function cardAt(e: MouseEvent | FocusEvent, service: ts.LanguageService, fileNam
   const node = nodeById(sourceFile, h.id)
   const origin = node && importOf(node, program.getTypeChecker())
   const info = quickInfoAt(service, fileName, h.range)
+  const detail = readingOf(h, sourceFile, true)
   if (info || origin) {
     const r = boxOf(h.el)
-    return { key: h.id, card: { kind: 'info', info, imports: origin ? [origin] : [] }, at: { left: r.left, top: r.bottom }, pinned: false }
+    return { key: h.id, card: { kind: 'info', info, imports: origin ? [origin] : [], reading: detail }, at: { left: r.left, top: r.bottom }, pinned: false }
   }
-  const reading = readingOf(h, sourceFile)
+  const reading = detail ?? readingOf(h, sourceFile)
   // A reading mark has no box; anchor to the pointer.
   const r = boxOf(h.el)
   const at = 'clientX' in e ? { left: e.clientX, top: e.clientY + 16 } : { left: r.left, top: r.bottom }
@@ -235,12 +246,10 @@ function Hover({ root, service, fileName }: { root: { current: HTMLElement | nul
         <>
           {card.info && <QuickInfo info={card.info} />}
           {card.imports.length > 0 && <ImportInfo imports={card.imports} />}
+          {card.reading && <ReadingInfo {...card.reading} />}
         </>
       ) : (
-        <div class="reading-info">
-          <p class="note">{card.note}</p>
-          <pre class="written">{card.written}</pre>
-        </div>
+        <ReadingInfo {...card} />
       )}
     </div>
   )
