@@ -36,8 +36,9 @@ export const rubyLastReturn = claim(isLastReturn, RubyLastReturn, '`return x` as
 
 /**
  * Whether a statement leaves the function on every path through it: a
- * jump, a block ending in one, an `if` whose both branches do. The
- * syntax alone says this much; the checker's flow analysis is not public.
+ * jump, a block ending in one, an `if` whose both branches do, a `try`
+ * whose `finally` does or whose block and `catch` both do. The syntax
+ * alone says this much; the checker's flow analysis is not public.
  */
 function leaves(s: ts.Statement): boolean {
   if (ts.isReturnStatement(s) || ts.isThrowStatement(s)) return true
@@ -46,6 +47,10 @@ function leaves(s: ts.Statement): boolean {
     return last !== undefined && leaves(last)
   }
   if (ts.isIfStatement(s)) return s.elseStatement !== undefined && leaves(s.thenStatement) && leaves(s.elseStatement)
+  if (ts.isTryStatement(s)) {
+    if (s.finallyBlock && leaves(s.finallyBlock)) return true
+    return leaves(s.tryBlock) && (s.catchClause === undefined || leaves(s.catchClause.block))
+  }
   return false
 }
 

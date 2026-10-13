@@ -18,9 +18,10 @@ export function Branch({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }
 /**
  * Comments around the braces between two branches (`} // a` before `else`,
  * a block comment between `else` and `{`) are attached to the blocks, which
- * this component never renders as such. They go on the keyword line.
+ * this component never renders as such. They go on the keyword line. A
+ * try's parts (see try.tsx) are the same case.
  */
-function Between({ before, after, ctx }: { before: ts.Statement; after: ts.Statement; ctx: Ctx }) {
+export function Between({ before, after, ctx }: { before: ts.Node; after: ts.Node; ctx: Ctx }) {
   const comments = [...ctx.comments.of(before).trailing, ...ctx.comments.of(after).leading]
   return (
     <>

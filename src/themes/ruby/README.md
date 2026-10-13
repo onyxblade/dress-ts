@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubyTry, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -33,6 +33,7 @@ The order is outermost first. The designed components claim their kinds;
 | `loop.tsx` | `do { ... } while (x)` | `begin ... end while x` |
 | `loop.tsx` | `for (const x of xs) { ... }`, `for (const k in o) { ... }` | `for x of xs ... end`, `for k in o ... end` |
 | `loop.tsx` | `for (;;) { ... }`, `for (let i = 0; i < n; i++) { ... }` | `loop do ... end`, `for (i = 0; i < n; i++) ... end` |
+| `try.tsx` | `try { ... } catch (e) { ... } finally { ... }` | `begin ... rescue => e ... ensure ... end` |
 | `enum.tsx` | `enum E { A = 1, B }` | `enum E ... end`, a member per line |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
 | `variables.tsx` | `const x = 1`, `let x = 1`, `for (const x of xs)` | `x = 1`, `for x of xs` |
@@ -94,7 +95,8 @@ x` has none; the mark is the last statement's, since that is the line
 the reader would have misread. An empty body gets no such line,
 Ruby's `nil` and this `undefined` saying the same nothing; neither does a
 body whose last statement leaves on every path, a `throw`, a block
-ending in a jump, an `if` whose both branches do. That much the syntax
+ending in a jump, an `if` whose both branches do, a `try` whose
+`finally` does or whose block and `catch` both do. That much the syntax
 says; the checker's flow analysis is not public, so an `if` chain that
 returns from every branch without an `else` gets the line though the end
 is unreachable.
@@ -113,7 +115,7 @@ of handing the nested statement to the resolver. The branch blocks are
 never rendered as nodes, so the comments attached to them, `} // a`
 before an `else`, go on the `else`/`elsif` line.
 
-### Loops and enums
+### Loops, try and enums
 
 `while (x) { ... }` reads as `while x ... end`, the condition without
 parens and the body in an Indent, the same shape as an `if`, by the same
@@ -133,6 +135,20 @@ things, and Ruby's `in` would hide which one it was. The three-clause
 `for (i = 0; i < n; i++)`, and only the braces give way to the Indent and
 `end`; the one Ruby does have is the clauseless `for (;;)`, which reads
 as `loop do`.
+
+### Try
+
+`try { ... } catch (e) { ... } finally { ... }` reads as `begin ...
+rescue => e ... ensure ... end`, each part's statements in an Indent
+under its keyword line. A `catch` without a binding is a bare `rescue`;
+a binding is the node's, so `catch (e: unknown)` reads as `rescue => e:
+unknown` and a destructuring `catch ({ message })` as `rescue => {
+message }`, both as written. The blocks are never rendered as nodes, so
+the comments around the braces between the parts, `} // a` before
+`catch`, go on the `rescue` or `ensure` line, as an `if`'s go on its
+`else`. A `try` as the last statement of a body leaves on every path
+when its `finally` does, or when its block and its `catch` both do, so
+no `undefined` follows it then (see The value of a body).
 
 `enum E { A = 1, B }` takes the class shape, `enum E ... end`, a member
 per line. Ruby has no enum; the word stays, since a module of constants
