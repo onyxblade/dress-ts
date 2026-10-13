@@ -1,5 +1,6 @@
 import type ts from 'typescript'
 import { CommentText, Dispatch, Indent, Lines, Render, type Ctx, type NodeProps } from '../../core'
+import { isFoldedModifier } from './bindings'
 
 /** Inline children keep line comments terminated, even when a header is reflowed. */
 export function Child({ node, ctx }: NodeProps) {
@@ -40,7 +41,13 @@ export function TypeParameters({ nodes, ctx }: { nodes: ts.NodeArray<ts.TypePara
 }
 
 export function Modifiers({ nodes, ctx }: { nodes: ts.NodeArray<ts.ModifierLike> | undefined; ctx: Ctx }) {
-  return <>{nodes?.map((node) => <><Child key={node.pos} node={node} ctx={ctx} />{' '}</>)}</>
+  return <>{nodes?.map((node) => {
+    if (!isFoldedModifier(node, ctx)) return <><Child key={node.pos} node={node} ctx={ctx} />{' '}</>
+    const { leading, trailing } = ctx.comments.of(node)
+    return [...leading, ...trailing].map((comment) => (
+      <><CommentText key={comment.pos} comment={comment} ctx={ctx} />{comment.block ? ' ' : '\n'}</>
+    ))
+  })}</>
 }
 
 /** A following keyword aligns with its header after a trailing line comment. */

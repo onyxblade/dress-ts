@@ -1,13 +1,14 @@
 import ts from 'typescript'
-import { NodeSpan, Verbatim, claim, type NodeProps } from '../../core'
+import { NodeSpan, claim, type NodeProps } from '../../core'
 import { Child, List, Modifiers, TypeParameters } from './common'
+import { TypeScriptVerbatim } from './bindings'
 
 type FunctionLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration |
   ts.ConstructorDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
 
 function TypeScriptFunction({ node, ctx }: NodeProps<FunctionLike>) {
   // Signatures keep their original terminator and trivia.
-  if (!node.body) return <Verbatim node={node} ctx={ctx} />
+  if (!node.body) return <TypeScriptVerbatim node={node} ctx={ctx} />
   const fn = ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
   return (
     <NodeSpan node={node}>

@@ -7,13 +7,13 @@ const show = (text: string) => renderText(text, typescript.transforms)
 describe('typescript layout', () => {
   it('lays out functions and branches with shortened strict equality', () => {
     expect(show('export function f(x: number): number { if (x === 0) { return 1; } else { return x; } }')).toBe(
-      'export function f(x: number): number {\n  if (x == 0) {\n    return 1;\n  } else {\n    return x;\n  }\n}\n',
+      'function f(x: number): number {\n  if (x == 0) {\n    return 1;\n  } else {\n    return x;\n  }\n}\n',
     )
   })
 
-  it('keeps other modifiers, generic constraints, methods, accessors, and parameter properties', () => {
+  it('folds named modifiers while retaining generic constraints, methods, and accessors', () => {
     expect(show('export class A<T extends object> extends B<T> implements C { private readonly x = 1; constructor(public value: T) {} get size(): number { return this.x } set size(x: number) { this.x = x } static async *m<U>(a: U): AsyncGenerator<U> { yield a } }')).toBe(
-      'export class A<T extends object> extends B<T> implements C {\n  private x = 1;\n  constructor(public value: T) {}\n  get size(): number {\n    return this.x\n  }\n  set size(x: number) {\n    this.x = x\n  }\n  static async *m<U>(a: U): AsyncGenerator<U> {\n    yield a\n  }\n}\n',
+      'class A<T extends object> extends B<T> implements C {\n  x = 1;\n  constructor(value: T) {}\n  get size(): number {\n    return this.x\n  }\n  set size(x: number) {\n    this.x = x\n  }\n  *m<U>(a: U): AsyncGenerator<U> {\n    yield a\n  }\n}\n',
     )
   })
 
@@ -27,9 +27,9 @@ describe('typescript layout', () => {
     expect(show('const f = x => ({ value: x });')).toBe('f = (x) => ({ value: x });\n')
   })
 
-  it('keeps overloads and abstract signatures as written', () => {
+  it('keeps overload and abstract signature terminators while folding modifiers', () => {
     expect(show('function f(x: string): void;\nfunction f(x: unknown) {}\nabstract class A { abstract m(): void; }')).toBe(
-      'function f(x: string): void;\nfunction f(x: unknown) {}\nabstract class A {\n  abstract m(): void;\n}\n',
+      'function f(x: string): void;\nfunction f(x: unknown) {}\nclass A {\n  m(): void;\n}\n',
     )
   })
 
@@ -39,15 +39,15 @@ describe('typescript layout', () => {
     )
   })
 
-  it('lays out loops with const name marks and keeps their jumps', () => {
+  it('lays out loops with declaration name marks and keeps their jumps', () => {
     expect(show('while (x) { x--; } do { f(); } while (x); for (let i = 0; i < 2; i++) { f(i); } for (;;) break; for (const k in obj) f(k); for await (const x of xs) { yield x; }')).toBe(
-      'while (x) {\n  x--;\n}\ndo {\n  f();\n} while (x);\nfor (let i = 0; i < 2; i++) {\n  f(i);\n}\nfor (;;) break;\nfor (k in obj) f(k);\nfor await (x of xs) {\n  yield x;\n}\n',
+      'while (x) {\n  x--;\n}\ndo {\n  f();\n} while (x);\nfor (i = 0; i < 2; i++) {\n  f(i);\n}\nfor (;;) break;\nfor (k in obj) f(k);\nfor await (x of xs) {\n  yield x;\n}\n',
     )
   })
 
   it('keeps separate switch labels, fallthrough, breaks, and scoped case blocks', () => {
     expect(show('switch (x) { case 1: case 2: f(); break; case 3: g(); default: { let y = 1; h(y); } }')).toBe(
-      'switch (x) {\n  case 1:\n  case 2:\n    f();\n    break;\n  case 3:\n    g();\n  default:\n    {\n      let y = 1;\n      h(y);\n    }\n}\n',
+      'switch (x) {\n  case 1:\n  case 2:\n    f();\n    break;\n  case 3:\n    g();\n  default:\n    {\n      y = 1;\n      h(y);\n    }\n}\n',
     )
   })
 
@@ -59,7 +59,7 @@ describe('typescript layout', () => {
 
   it('keeps interfaces, enum initializers, separators, and empty bodies', () => {
     expect(show('interface I<T> extends J<T> { readonly x: T; m(): T; } export const enum E { A = 1, B, } enum Empty {}')).toBe(
-      'interface I<T> extends J<T> {\n  x: T;\n  m(): T;\n}\nexport const enum E {\n  A = 1,\n  B,\n}\nenum Empty {}\n',
+      'interface I<T> extends J<T> {\n  x: T;\n  m(): T;\n}\nenum E {\n  A = 1,\n  B,\n}\nenum Empty {}\n',
     )
     expect(show('enum E { A, B }')).toBe('enum E {\n  A,\n  B\n}\n')
   })

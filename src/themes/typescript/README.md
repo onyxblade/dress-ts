@@ -26,11 +26,11 @@ also owns the layout of declarations and control flow.
 | `switch.tsx` | Independent switch arms, with ordinary TS layout for unsupported switches |
 | `switchAnalysis.ts` | The switch contract shared by the theme and lint rule |
 | `equality.tsx` | Shortened strict comparisons, guarded by a scan of the entire source file |
-| `bindings.tsx` / `bindings.css` | Declaration-only name marks for `const` and named `readonly` properties |
+| `bindings.tsx` / `bindings.css` | One declaration-only name mark for folded binding kinds and modifier lists |
 | `eslint.ts` | The opt-in `dress/switch-reading` rule, `eqeqeq`, and flat configs |
 | `try.tsx` | Try, catch with or without a binding, and finally |
 | `enum.tsx` | Enums, member initializers, and comma separators |
-| Core `Verbatim` | Everything else, with semantic children still dispatched through the theme |
+| `TypeScriptVerbatim` / core `Verbatim` | Everything else, omitting folded modifier gaps while dispatching semantic children through the theme |
 
 Each statement or member gets a `Line`; bodies use `Indent` and `Lines`
 with `within` so dangling comments survive. Nonempty bodies expand even
@@ -56,9 +56,9 @@ Headers use consistent spaces. Arrow parameters always have parentheses;
 `do ... while` gets its terminating semicolon. Parameter and type-parameter
 lists retain a source trailing comma, as do enum members. Existing
 statement and member terminators stay with their nodes. Overload,
-ambient, and abstract signatures without bodies use `Verbatim`, preserving
-their original terminators. These are formatting decisions, without a
-translation mark or a new reading rule.
+ambient, and abstract signatures without bodies use the theme's verbatim
+fallback, preserving their original terminators while folding named modifiers.
+The layout itself needs no translation mark; name marks describe folded details.
 
 ## Imports on hover
 
@@ -87,39 +87,55 @@ and checker still use the original, unchanged AST.
 
 ## Binding modifiers on names
 
-The theme omits `const` from variable declarations and `readonly` from
-named property declarations. Their declaration names carry a thin underline:
+The theme folds `const`, `let`, and `var`, together with prefix modifiers on
+named declarations, into **one thin dotted underline on the declaration name**.
+The same mark means only that declaration information is folded. Its appearance
+does not encode a modifier's kind or the number of folded items.
 
-| Source | Display | Name mark |
+| Source | Display | Hover's folded list |
 | --- | --- | --- |
-| `const count = 1` | `count = 1` | Solid underline on `count` |
-| `private readonly items: Item[]` | `private items: Item[]` | Dotted underline on `items` |
-| `const { key: local } = input` | `{ key: local } = input` | Solid underline on `local`, none on `key` |
-| `constructor(readonly value: T) {}` | `constructor(value: T) {}` | Dotted underline on `value` |
+| `const limit = 10` | `limit = 10` | `const` |
+| `let count = 0` | `count = 0` | `let` |
+| `var legacy = 1` | `legacy = 1` | `var` |
+| `private static readonly cache = new Map()` | `cache = new Map()` | `private static readonly` |
+| `export declare const x: number, y: number` | `x: number, y: number` | `export declare const` on each name |
+| `constructor(private readonly value: T) {}` | `constructor(value: T) {}` | `private readonly` |
 
-Marks appear only at declarations; references retain their usual appearance.
-They preserve the name's semantic color and node identity. Hover or click a
-marked name for its usual quick info, the mark's explanation, and the original
-declaration. Constructor parameter properties explicitly explain that the
+Marks appear only at declarations; references and ordinary assignments retain
+their usual appearance. This distinguishes a folded `let count = 0` declaration
+from the later assignment `count = 0`. Each mark preserves the name's semantic
+color and node identity. Hover or click it for quick info, the complete ordered
+list of folded items, and the original declaration. A single metadata list
+combines multiple modifiers; it never stacks marks or counts on a name.
+Constructor parameter properties explicitly explain that the
 parameter also declares and initializes a field. Core `Reading`'s optional
 `detail` flag lets these narrow name annotations accompany token quick info;
 ordinary enclosing readings still defer to that info.
 
-`const` applies to bindings, not deep immutability of their values. `readonly`
-is a TypeScript property restriction, also not deep immutability. The two marks
-deliberately keep that distinction. Neither needs a lint prerequisite.
+Hover explanations retain the distinctions between `const`, block-scoped `let`,
+and hoisted `var`, as well as the property meaning of `readonly`. Const bindings
+and readonly properties do not imply deep immutability. Folding does not need
+a lint prerequisite and does not change any of these semantics.
 
 All local names in nested destructuring and loop declarations are marked;
 property keys, default expressions, and later uses are not. Empty destructuring
-with no bound names retains `const`. `let`, `var`, `using`, `await using`,
-`as const`, `const enum`, and `const` type parameters remain explicit.
+with no bound names retains its binding keyword and statement modifiers.
+`using`, `await using`, `as const`, and type-parameter modifiers remain explicit.
 
-Named class fields, interface/type-literal properties, and constructor parameter
-properties support the readonly mark, including private, quoted, and numeric
-names. Computed names and index signatures retain `readonly`, as do type
-operators (`readonly T[]`, tuples) and mapped-type modifiers. Other modifiers,
-types, decorators, punctuation, and all comments remain visible. A newline
-that makes `readonly` a property name rather than a modifier is left alone.
+Named classes, interfaces, functions, methods, accessors, fields, type aliases,
+enums, namespaces, property/method signatures, and constructor parameter
+properties fold their prefix modifiers. This includes `public`, `private`,
+`protected`, `readonly`, `static`, `abstract`, `override`, `accessor`, `async`,
+`export`, `default`, `declare`, and `const` on an enum. Private, quoted, and
+numeric declaration names are supported. Structural words such as `class`,
+`function`, `get`, and `set` remain visible.
+
+Computed names, index signatures, constructors' own modifiers, anonymous
+classes/functions, and arrows retain their modifiers because they have no
+unambiguous declaration name to mark. Type operators (`readonly T[]`, tuples)
+and mapped-type modifiers also remain explicit. Types, decorators, punctuation,
+and every comment stay visible. A newline that makes `readonly` a property name
+rather than a modifier is left alone.
 
 These are visual readings: copying the displayed plain text omits the name
 marks and does not reproduce an equivalent TS program. The source view and
@@ -194,7 +210,7 @@ switch (token.kind) {
 }
 ```
 
-The displayed `value` declaration also has the solid `const` underline.
+The displayed `value` declaration also has the dotted folded-declaration mark.
 
 These are statement arms: `return`, `throw`, and `continue` stay explicit.
 There is no implicit return value and no promise of exhaustiveness. If no

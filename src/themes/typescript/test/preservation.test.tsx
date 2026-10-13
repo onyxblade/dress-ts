@@ -5,7 +5,7 @@ import { htmlToText, lostComments, programFor, renderHtml, renderText, samples }
 import { typescript } from '..'
 import { typescriptSwitchLayout } from '../switch'
 import { typescriptEquality } from '../equality'
-import { typescriptConst, typescriptReadonly } from '../bindings'
+import { typescriptBindings } from '../bindings'
 
 const examples = [
   ...samples(),
@@ -49,7 +49,7 @@ describe('typescript preservation', () => {
   it.each(examples.map((source, i) => ({ source, name: `example ${i + 1}` })))('keeps syntax and comments in $name', ({ source }) => {
     // Check formatting with the switch, equality, and name readings disabled;
     // their displayed forms do not have the original executable TS semantics.
-    const readings = [typescriptEquality, typescriptConst, typescriptReadonly]
+    const readings = [typescriptEquality, typescriptBindings]
     const shown = renderText(source, [typescriptSwitchLayout, ...typescript.transforms.filter((transform) => !readings.includes(transform))])
     const original = programFor(source)
     const rendered = programFor(shown)

@@ -1,9 +1,26 @@
 import ts from 'typescript'
-import { Reading, Verbatim, claim, withTransforms, type Ctx, type Edit, type NodeProps } from '../../core'
+import { Reading, Verbatim, withTransforms, type Ctx, type Edit, type NodeProps, type Transform } from '../../core'
 import './bindings.css'
 
-const constNote = 'Solid underline: const binding; the name cannot be reassigned, but its value may still be mutable.'
-const readonlyNote = 'Dotted underline: readonly property; assignments are restricted by TypeScript, without making the value deeply immutable.'
+type BindingKind = 'const' | 'let' | 'var'
+
+interface FoldedDeclaration {
+  names: readonly ts.Node[]
+  modifiers: readonly ts.Modifier[]
+  labels: string[]
+  original: ts.Node
+  binding?: BindingKind
+}
+
+/** Resource-management declarations keep their keywords, including await using. */
+function bindingKind(node: ts.VariableDeclarationList): BindingKind | undefined {
+  switch (node.flags & ts.NodeFlags.BlockScoped) {
+    case ts.NodeFlags.Const: return 'const'
+    case ts.NodeFlags.Let: return 'let'
+    case ts.NodeFlags.None: return 'var'
+    default: return undefined
+  }
+}
 
 /** Destructuring marks local bindings, never property keys or default values. */
 function boundNames(name: ts.BindingName): ts.Identifier[] {
@@ -12,64 +29,103 @@ function boundNames(name: ts.BindingName): ts.Identifier[] {
   )
 }
 
-/** Preserve the name's normal component, identity, and semantic color. */
-function markNames(ctx: Ctx, names: readonly ts.Node[], declaration: ts.Node, kind: 'const' | 'readonly', note: string): Ctx {
-  const targets = new Set(names)
-  return withTransforms(ctx, [(next) => (node, context) => {
-    const Name = next(node, context)
-    return targets.has(node) ? (props) => (
-      <Reading node={declaration} note={note} detail>
-        <span class="ts-binding" data-binding-kind={kind}><Name {...props} /></span>
-      </Reading>
-    ) : Name
-  }])
+function variableNames(node: ts.VariableDeclarationList): ts.Identifier[] {
+  return node.declarations.flatMap((declaration) => boundNames(declaration.name))
 }
 
-/** Remove only whitespace after a hidden keyword, leaving every comment in its source gap. */
+/** Type operators, type parameters, computed names, and nameless declarations stay explicit. */
+function declarationName(node: ts.Node): ts.Node | undefined {
+  if (!(ts.isClassLike(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) ||
+    ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isMethodDeclaration(node) ||
+    ts.isMethodSignature(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node) ||
+    ts.isPropertyDeclaration(node) || ts.isPropertySignature(node) || ts.isEnumDeclaration(node) ||
+    ts.isModuleDeclaration(node) || (ts.isParameter(node) && ts.isConstructorDeclaration(node.parent)))) return
+  const name = node.name
+  if (name && (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) ||
+    ts.isStringLiteral(name) || ts.isNumericLiteral(name))) return name
+}
+
+function foldedDeclaration(node: ts.Node, ctx: Ctx): FoldedDeclaration | undefined {
+  if (ts.isVariableDeclarationList(node)) {
+    const binding = bindingKind(node)
+    const names = variableNames(node)
+    if (!binding || names.length === 0) return
+    const original = ts.isVariableStatement(node.parent) ? node.parent : node
+    const modifiers = ts.canHaveModifiers(original) ? ts.getModifiers(original) ?? [] : []
+    return { names, modifiers: [], labels: [...modifiers.map((m) => m.getText(ctx.sourceFile)), binding], original, binding }
+  }
+  if (!ts.canHaveModifiers(node)) return
+  const modifiers = ts.getModifiers(node) ?? []
+  if (modifiers.length === 0) return
+  const labels = modifiers.map((modifier) => modifier.getText(ctx.sourceFile))
+  if (ts.isVariableStatement(node)) {
+    const binding = bindingKind(node.declarationList)
+    if (!binding || variableNames(node.declarationList).length === 0) return
+    // The list below owns all name marks, including these statement modifiers.
+    return { names: [], modifiers, labels: [...labels, binding], original: node, binding }
+  }
+  const name = declarationName(node)
+  return name ? { names: [name], modifiers, labels, original: node } : undefined
+}
+
+function foldingNote(fold: FoldedDeclaration): string {
+  const notes = [`Folded declaration: ${fold.labels.join(' ')}.`]
+  if (fold.binding === 'const') notes.push('The binding cannot be reassigned; its value may still be mutable.')
+  if (fold.binding === 'let') notes.push('A reassignable, block-scoped binding.')
+  if (fold.binding === 'var') notes.push('A reassignable, hoisted binding scoped to its function, module, or script, rather than its block.')
+  if (fold.labels.includes('readonly')) notes.push('Readonly restricts property assignment in TypeScript; it does not make the value deeply immutable.')
+  if (ts.isParameter(fold.original)) notes.push('This constructor parameter also declares and initializes a property.')
+  return notes.join(' ')
+}
+
+function HiddenModifier() { return null }
+
+/** Shared by designed headers and the fallback; only this scoped resolver can hide a modifier. */
+export function isFoldedModifier(node: ts.Node, ctx: Ctx): boolean {
+  return ctx.resolve(node, ctx) === HiddenModifier
+}
+
+/** Remove only whitespace after a hidden keyword, leaving comments in their source gaps. */
 function afterKeyword(end: number, ctx: Ctx): number {
   const text = ctx.sourceFile.text
   while (end < text.length && /\s/.test(text[end])) end++
   return end
 }
 
-function ConstBindings({ node, ctx }: NodeProps<ts.VariableDeclarationList>) {
-  const names = node.declarations.flatMap((declaration) => boundNames(declaration.name))
-  // Empty destructuring has no name on which to retain the declaration kind.
-  if (names.length === 0) return <Verbatim node={node} ctx={ctx} />
-  const from = node.getStart(ctx.sourceFile)
-  const edit: Edit = { from, to: afterKeyword(from + 'const'.length, ctx), text: '', note: constNote }
-  return <Verbatim node={node} ctx={markNames(ctx, names, node, 'const', constNote)} edits={[edit]} />
+/** Signatures and other fallback declarations retain all punctuation and trivia. */
+export function TypeScriptVerbatim({ node, ctx }: NodeProps) {
+  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) ?? [] : []
+  const hidden = modifiers.filter((modifier) => isFoldedModifier(modifier, ctx))
+  const note = `Folded declaration modifiers: ${hidden.map((modifier) => modifier.getText(ctx.sourceFile)).join(' ')}.`
+  const edits: Edit[] = hidden.map((modifier) => ({
+    from: modifier.end, to: afterKeyword(modifier.end, ctx), text: '', note,
+  }))
+  return <Verbatim node={node} ctx={ctx} edits={edits} />
 }
 
-export const typescriptConst = claim(
-  (node): node is ts.VariableDeclarationList => ts.isVariableDeclarationList(node) &&
-    (node.flags & ts.NodeFlags.BlockScoped) === ts.NodeFlags.Const,
-  ConstBindings,
-)
-
-type ReadonlyDeclaration = ts.PropertyDeclaration | ts.PropertySignature | ts.ParameterDeclaration
-
-function readonlyModifier(node: ReadonlyDeclaration) {
-  return ts.getModifiers(node)?.find((modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
+/** One name mark and one ordered metadata list, regardless of how many details were folded. */
+export const typescriptBindings: Transform = (next) => (node, ctx) => {
+  const fold = foldedDeclaration(node, ctx)
+  if (!fold) return next(node, ctx)
+  const Original = next(node, ctx)
+  const names = new Set(fold.names)
+  const modifiers = new Set<ts.Node>(fold.modifiers)
+  const note = foldingNote(fold)
+  return (props) => {
+    const scoped = withTransforms(props.ctx, [(resolve) => (child, context) => {
+      if (modifiers.has(child)) return HiddenModifier
+      const Name = resolve(child, context)
+      return names.has(child) ? (nameProps) => (
+        <Reading node={fold.original} note={note} detail>
+          <span class="ts-binding" data-folded-modifiers={fold.labels.join(' ')}><Name {...nameProps} /></span>
+        </Reading>
+      ) : Name
+    }])
+    if (ts.isVariableDeclarationList(node) && fold.binding) {
+      const from = node.getStart(ctx.sourceFile)
+      const edit: Edit = { from, to: afterKeyword(from + fold.binding.length, ctx), text: '', note }
+      return <Verbatim node={node} ctx={scoped} edits={[edit]} />
+    }
+    return <Original {...props} ctx={scoped} />
+  }
 }
-
-function isReadonlyDeclaration(node: ts.Node): node is ReadonlyDeclaration {
-  if (!ts.isPropertyDeclaration(node) && !ts.isPropertySignature(node) &&
-      !(ts.isParameter(node) && ts.isConstructorDeclaration(node.parent))) return false
-  // Computed expressions and invalid parameter patterns have no single declared name.
-  return (ts.isIdentifier(node.name) || ts.isPrivateIdentifier(node.name) ||
-    ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) && !!readonlyModifier(node)
-}
-
-function ReadonlyBinding({ node, ctx }: NodeProps<ReadonlyDeclaration>) {
-  const modifier = readonlyModifier(node)!
-  const note = ts.isParameter(node)
-    ? `${readonlyNote} This constructor parameter also declares and initializes a property.`
-    : readonlyNote
-  const marked = markNames(ctx, [node.name], node, 'readonly', note)
-  const scoped = withTransforms(marked, [(next) => (child, context) => child === modifier ? () => null : next(child, context)])
-  const edit: Edit = { from: modifier.end, to: afterKeyword(modifier.end, ctx), text: '', note }
-  return <Verbatim node={node} ctx={scoped} edits={[edit]} />
-}
-
-export const typescriptReadonly = claim(isReadonlyDeclaration, ReadonlyBinding)

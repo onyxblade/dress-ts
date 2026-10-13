@@ -143,7 +143,7 @@ describe('typescript switch arms', () => {
 
   it('uses the arm braces for a scoped body and keeps declarations', () => {
     expect(show('switch (x) { case 1: { const y = 2; f(y); break; } default: { let y = 3; g(y); } }')).toBe(
-      'switch (x) {\n  1 => {\n    y = 2;\n    f(y);\n  }\n  default => {\n    let y = 3;\n    g(y);\n  }\n}\n',
+      'switch (x) {\n  1 => {\n    y = 2;\n    f(y);\n  }\n  default => {\n    y = 3;\n    g(y);\n  }\n}\n',
     )
   })
 

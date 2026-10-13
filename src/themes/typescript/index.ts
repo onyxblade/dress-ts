@@ -1,4 +1,4 @@
-import { Verbatim, semanticIdentifiers, type Theme } from '../../core'
+import { semanticIdentifiers, type Theme } from '../../core'
 import { typescriptSourceFile } from './sourceFile'
 import { typescriptBlock } from './block'
 import { typescriptArrow, typescriptFunction } from './function'
@@ -9,12 +9,13 @@ import { typescriptCase, typescriptCaseBlock, typescriptSwitch } from './switch'
 import { typescriptCatch, typescriptTry } from './try'
 import { typescriptEnum, typescriptEnumMember } from './enum'
 import { typescriptEquality } from './equality'
-import { typescriptConst, typescriptReadonly } from './bindings'
+import { TypeScriptVerbatim, typescriptBindings } from './bindings'
 
 /** TypeScript laid out for reading, with top-level imports available on hover. */
 export const typescript: Theme = {
   name: 'typescript',
   transforms: [
+    typescriptBindings,
     typescriptSourceFile,
     typescriptFunction,
     typescriptArrow,
@@ -33,9 +34,7 @@ export const typescript: Theme = {
     typescriptEnumMember,
     typescriptBlock,
     typescriptEquality,
-    typescriptConst,
-    typescriptReadonly,
     semanticIdentifiers,
-    () => () => Verbatim,
+    () => () => TypeScriptVerbatim,
   ],
 }
