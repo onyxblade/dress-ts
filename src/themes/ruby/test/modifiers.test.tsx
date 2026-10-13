@@ -32,6 +32,11 @@ describe('noise modifiers', () => {
     expect(show('let x: readonly string[]')).toBe('let x: readonly string[]')
   })
 
+  it('keeps the readonly of a mapped type, a token of the type and not a modifier of a declaration', () => {
+    expect(show('type R<T> = { readonly [K in keyof T]: T[K] }')).toBe('type R[T] = { readonly [K in keyof T]: T[K] }')
+    expect(show('type W<T> = { -readonly [K in keyof T]?: T[K] }')).toBe('type W[T] = { -readonly [K in keyof T]?: T[K] }')
+  })
+
   it('keeps a comment after the modifier', () => {
     expect(show('interface A {\n  readonly /* c */ root: string\n}')).toBe('interface A {\n  /* c */ root: string\n}')
     expect(show('class A {\n  private /* c */ m() {}\n}')).toBe('class A\n  /* c */ def m()\n  end\nend\n')

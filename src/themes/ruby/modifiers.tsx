@@ -53,11 +53,16 @@ const note = '`private readonly x` reads as `x`'
  * below, in the theme's fallback, drops the space that followed it, which
  * is gap text of the parent and the only part an edit can reach. A
  * comment after the modifier is in that gap too and stays.
+ *
+ * Only a modifier in its parent's modifier list is noise. The `readonly`
+ * of a mapped type, `{ readonly [K in T]: V }`, is the same token kind in
+ * the type's own `readonlyToken` slot, and like the `readonly` of
+ * `readonly string[]` it is an operator on the type, which stays.
  */
-export const rubyModifier = claim(
-  (node): node is ts.ModifierLike => ts.isModifierLike(node) && isNoiseModifier(node),
-  () => null,
-)
+const isNoiseModifierNode = (node: ts.Node): node is ts.Modifier =>
+  ts.isModifier(node) && isNoiseModifier(node) && ts.canHaveModifiers(node.parent) && (ts.getModifiers(node.parent)?.includes(node) ?? false)
+
+export const rubyModifier = claim(isNoiseModifierNode, () => null)
 
 export function droppedModifiers(node: ts.Node, { sourceFile: { text } }: Ctx): Edit[] {
   if (!ts.canHaveModifiers(node)) return []

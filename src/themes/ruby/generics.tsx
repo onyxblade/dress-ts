@@ -30,7 +30,9 @@ export function TypeList({ nodes, ctx }: { nodes: ts.NodeArray<ts.Node> | undefi
  * parameter with a constraint is claimed, since a bare `T` reads as
  * itself. The `U extends string` of an `infer U extends string` is a
  * type parameter to the parser too, but it narrows a match rather than
- * bounding a parameter, so it stays as written.
+ * bounding a parameter, so it stays as written; so does the `K in T` of a
+ * mapped type, `{ [K in T]: V }`, whose constraint is the set of keys `K`
+ * ranges over, not a bound.
  */
 export function RubyTypeParameter({ node, ctx }: NodeProps<ts.TypeParameterDeclaration>) {
   return (
@@ -54,7 +56,7 @@ export function RubyTypeParameter({ node, ctx }: NodeProps<ts.TypeParameterDecla
 }
 
 const isBounded = (n: ts.Node): n is ts.TypeParameterDeclaration =>
-  ts.isTypeParameterDeclaration(n) && n.constraint !== undefined && !ts.isInferTypeNode(n.parent)
+  ts.isTypeParameterDeclaration(n) && n.constraint !== undefined && !ts.isInferTypeNode(n.parent) && !ts.isMappedTypeNode(n.parent)
 
 export const rubyTypeParameter = claim(isBounded, RubyTypeParameter, '`T extends U` reads as `T < U`')
 

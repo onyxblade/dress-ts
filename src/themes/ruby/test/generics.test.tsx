@@ -74,6 +74,10 @@ describe('rubyTypeParameter', () => {
     )
   })
 
+  it('leaves the parameter of a mapped type alone, its constraint being the keys it ranges over', () => {
+    expect(show('type R<T> = { [K in keyof T]: T[K] }')).toBe('type R[T] = { [K in keyof T]: T[K] }')
+  })
+
   it('keeps the comments around the constraint, both after the name they follow', () => {
     expect(show('type A<T /* a */ extends /* b */ object> = T')).toBe('type A[T /* a */ /* b */ < object] = T')
     expect(lostComments('type A<T /* a */ extends /* b */ object> = T', [rubyTypeParameter, rubyFallback])).toEqual([])

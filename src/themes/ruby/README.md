@@ -161,7 +161,10 @@ own, and has no `readonly`, so `public`, `private`, `protected` and
 string`. Which modifiers a declaration had is in the node as written, on
 hover. `static`, `abstract`, `override`, `async`, `export` and the rest
 say something a reader wants in the text and stay; so does the `readonly`
-of a type, `readonly string[]`, which is an operator, not a modifier.
+of a type, `readonly string[]` or `{ readonly [K in T]: V }`, which is an
+operator on the type, not a modifier of a declaration: `rubyModifier`
+claims a modifier only from its parent's modifier list, and a mapped
+type keeps its `readonly` in a slot of its own.
 
 A designed component writes its modifiers through `Modifiers`, which
 skips the noise and keeps the comments attached to it. A node shown
@@ -197,8 +200,9 @@ as `T < object = {}`, modifiers (`in`, `out`, `const`) and default kept.
 A bare `T` is not claimed, since it reads as itself. The `U extends
 string` of an `infer U extends string` is a type parameter to the parser
 too, but it narrows a match rather than bounding a parameter, so it stays
-as written; so does the `extends` of a conditional type, which is no
-parameter at all.
+as written; so does the `K in T` of a mapped type, whose constraint is
+the keys `K` ranges over, and the `extends` of a conditional type, which
+is no parameter at all.
 
 ## The fallback
 
