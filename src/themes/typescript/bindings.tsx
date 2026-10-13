@@ -33,6 +33,13 @@ function variableNames(node: ts.VariableDeclarationList): ts.Identifier[] {
   return node.declarations.flatMap((declaration) => boundNames(declaration.name))
 }
 
+/** Static changes whether the member belongs to the class or each instance; keep it visible. */
+function foldableModifiers(node: ts.Node): readonly ts.Modifier[] {
+  return ts.canHaveModifiers(node)
+    ? (ts.getModifiers(node) ?? []).filter((modifier) => modifier.kind !== ts.SyntaxKind.StaticKeyword)
+    : []
+}
+
 /** Type operators, type parameters, computed names, and nameless declarations stay explicit. */
 function declarationName(node: ts.Node): ts.Node | undefined {
   if (!(ts.isClassLike(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) ||
@@ -51,11 +58,10 @@ function foldedDeclaration(node: ts.Node, ctx: Ctx): FoldedDeclaration | undefin
     const names = variableNames(node)
     if (!binding || names.length === 0) return
     const original = ts.isVariableStatement(node.parent) ? node.parent : node
-    const modifiers = ts.canHaveModifiers(original) ? ts.getModifiers(original) ?? [] : []
+    const modifiers = foldableModifiers(original)
     return { names, modifiers: [], labels: [...modifiers.map((m) => m.getText(ctx.sourceFile)), binding], original, binding }
   }
-  if (!ts.canHaveModifiers(node)) return
-  const modifiers = ts.getModifiers(node) ?? []
+  const modifiers = foldableModifiers(node)
   if (modifiers.length === 0) return
   const labels = modifiers.map((modifier) => modifier.getText(ctx.sourceFile))
   if (ts.isVariableStatement(node)) {

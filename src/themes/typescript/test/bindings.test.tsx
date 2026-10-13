@@ -47,11 +47,11 @@ describe('typescript declaration name readings', () => {
   it('merges property modifiers into one mark, preserving decorators and references', () => {
     const source = 'class C { @dec private readonly field!: number; static readonly #secret = 1; readonly "label"?: string; readonly 0 = 0; method() { return this.field; } }\ninterface I { readonly value: number; mutable: number; }'
     expect(marks(source)).toEqual([
-      ['private readonly', 'field'], ['static readonly', '#secret'],
+      ['private readonly', 'field'], ['readonly', '#secret'],
       ['readonly', '"label"'], ['readonly', '0'], ['readonly', 'value'],
     ])
     expect(show(source)).toContain('@dec field!: number;')
-    expect(show(source)).toContain('#secret = 1;')
+    expect(show(source)).toContain('static #secret = 1;')
     expect(show(source)).toContain('return this.field;')
     expect(show(source)).not.toContain('readonly')
   })
@@ -111,17 +111,29 @@ describe('typescript declaration name readings', () => {
     expect(htmlToText(render(<Render node={original.sourceFile} ctx={original} />))).toBe(source)
   })
 
-  it('retains ordered metadata for every modifier without stacking marks', () => {
+  it('retains ordered metadata for folded modifiers while keeping static in the code', () => {
     const source = 'class C { private static readonly cache = new Map(); protected override method() {} }\nexport declare const x: number, y: number;'
     expect(marks(source)).toEqual([
-      ['private static readonly', 'cache'], ['protected override', 'method'],
+      ['private readonly', 'cache'], ['protected override', 'method'],
       ['export declare const', 'x'], ['export declare const', 'y'],
     ])
     expect(html(source).match(/class="ts-binding"/g)).toHaveLength(4)
-    expect(html(source)).toContain('Folded declaration: private static readonly.')
+    expect(html(source)).toContain('Folded declaration: private readonly.')
     expect(html(source)).toContain('Folded declaration: export declare const.')
-    expect(show(source)).toContain('cache = new Map();')
+    expect(show(source)).toContain('static cache = new Map();')
     expect(show(source)).toContain('x: number, y: number;')
+  })
+
+  it('keeps static-only fields, methods, accessors, and signatures without a folding mark', () => {
+    const source = 'declare class C { static value: number; value: number; static method(): void; static get size(): number; static set size(value: number); }'
+    expect(show(source)).toBe('class C {\n  static value: number;\n  value: number;\n  static method(): void;\n  static get size(): number;\n  static set size(value: number);\n}\n')
+    expect(marks(source)).toEqual([['declare', 'C']])
+  })
+
+  it('keeps static in designed method and accessor headers when other modifiers fold', () => {
+    const source = 'class C { public static async method() {} private static get size() { return 1; } private static set size(value: number) {} }'
+    expect(show(source)).toBe('class C {\n  static method() {}\n  static get size() {\n    return 1;\n  }\n  static set size(value: number) {}\n}\n')
+    expect(marks(source)).toEqual([['public async', 'method'], ['private', 'size'], ['private', 'size']])
   })
 
   it('marks named declarations and signatures while keeping their syntax and type colors', () => {
@@ -163,6 +175,7 @@ describe('typescript declaration name readings', () => {
     'export // a\nasync /* b */ function /* c */ f() {}',
     'export /* a */ abstract /* b */ class C { protected /* c */ abstract /* d */ m(): void; }',
     'class C { private /* a */ static /* b */ readonly /* c */ field = 1; }',
+    'class C { public /* a */ static /* b */ async /* c */ method() {} }',
     'class C { public /* a */ get /* b */ size() { return 0; } }',
     'export /* a */ type /* b */ T = { readonly /* c */ value: number };',
   ])('preserves comments while merging modifier lists: %s', (source) => {

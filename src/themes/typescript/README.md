@@ -87,8 +87,8 @@ and checker still use the original, unchanged AST.
 
 ## Binding modifiers on names
 
-The theme folds `const`, `let`, and `var`, together with prefix modifiers on
-named declarations, into **one thin dotted underline on the declaration name**.
+The theme folds `const`, `let`, and `var`, together with prefix modifiers other
+than `static` on named declarations, into **one thin dotted underline on the declaration name**.
 The same mark means only that declaration information is folded. Its appearance
 does not encode a modifier's kind or the number of folded items.
 
@@ -97,7 +97,7 @@ does not encode a modifier's kind or the number of folded items.
 | `const limit = 10` | `limit = 10` | `const` |
 | `let count = 0` | `count = 0` | `let` |
 | `var legacy = 1` | `legacy = 1` | `var` |
-| `private static readonly cache = new Map()` | `cache = new Map()` | `private static readonly` |
+| `private static readonly cache = new Map()` | `static cache = new Map()` | `private readonly` |
 | `export declare const x: number, y: number` | `x: number, y: number` | `export declare const` on each name |
 | `constructor(private readonly value: T) {}` | `constructor(value: T) {}` | `private readonly` |
 
@@ -125,10 +125,15 @@ with no bound names retains its binding keyword and statement modifiers.
 Named classes, interfaces, functions, methods, accessors, fields, type aliases,
 enums, namespaces, property/method signatures, and constructor parameter
 properties fold their prefix modifiers. This includes `public`, `private`,
-`protected`, `readonly`, `static`, `abstract`, `override`, `accessor`, `async`,
+`protected`, `readonly`, `abstract`, `override`, `accessor`, `async`,
 `export`, `default`, `declare`, and `const` on an enum. Private, quoted, and
 numeric declaration names are supported. Structural words such as `class`,
 `function`, `get`, and `set` remain visible.
+
+`static` always stays in the code: it distinguishes a class member from an
+instance member. It is excluded from the folded metadata list, so a member
+whose only modifier is `static` has no folding mark. This applies to fields,
+methods, accessors, and signatures; static initialization blocks also stay explicit.
 
 Computed names, index signatures, constructors' own modifiers, anonymous
 classes/functions, and arrows retain their modifiers because they have no
@@ -268,18 +273,19 @@ it or require the corresponding plugin.
 
 ## What stays visible
 
-Outside the import, switch, and equality readings, keywords, modifiers, decorators, types, generic arguments
+Outside the import, switch, equality, and declaration-name readings, keywords, modifiers, decorators, types, generic arguments
 and constraints, receivers, operators, and jumps retain their TypeScript
-meaning and spelling. `const` and `let`, `of` and `in`,
+meaning and spelling. `static` and instance members, `of` and `in`,
 `return` and a final expression remain distinct. Unsupported switches keep
 their separate labels, breaks, and fallthrough in ordinary TS form.
 Standalone blocks keep their braces and scope.
 
 Expressions, variable and field declarations, exports, type
 expressions, namespaces, and other undesigned kinds use the source
-fallback. It preserves their text while dispatching children, so an arrow
+fallback. It preserves text outside folded declaration keywords and modifier
+gaps while dispatching children, so an arrow
 inside a call or a method inside an object literal can still get designed
-layout. There are no fallback text edits. This is a complete selectable
+layout. This is a complete selectable
 theme with coverage through fallback, not a replacement TypeScript printer
 with a bespoke component for every syntax kind.
 
@@ -298,7 +304,7 @@ to the blocks themselves are kept as well as the comments inside them.
 
 `test/layout.test.tsx` checks visible layout, fallback, identity, and
 semantic roles. `test/preservation.test.tsx` renders all demo samples and
-additional syntax/comment cases with the switch and equality readings disabled,
+additional syntax/comment cases with the switch, equality, and declaration-name readings disabled,
 reparses the result, and checks syntax
 structure (excluding omitted file imports), literal values, declaration
 kinds, and the ordered comments.
@@ -312,3 +318,5 @@ import tests cover symbol lookup and the hover content.
 `test/equality.test.tsx` checks the whole-file guard, nested expressions,
 comments and literal text, hover identity, independent files, and the combined
 lint preset, including the absence of null exceptions and lint-disable fallback.
+`test/bindings.test.tsx` checks combined modifier metadata, declaration-only
+marks, static member visibility, fallback cases, and comment preservation.

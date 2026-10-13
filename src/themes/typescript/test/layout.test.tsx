@@ -13,7 +13,7 @@ describe('typescript layout', () => {
 
   it('folds named modifiers while retaining generic constraints, methods, and accessors', () => {
     expect(show('export class A<T extends object> extends B<T> implements C { private readonly x = 1; constructor(public value: T) {} get size(): number { return this.x } set size(x: number) { this.x = x } static async *m<U>(a: U): AsyncGenerator<U> { yield a } }')).toBe(
-      'class A<T extends object> extends B<T> implements C {\n  x = 1;\n  constructor(value: T) {}\n  get size(): number {\n    return this.x\n  }\n  set size(x: number) {\n    this.x = x\n  }\n  *m<U>(a: U): AsyncGenerator<U> {\n    yield a\n  }\n}\n',
+      'class A<T extends object> extends B<T> implements C {\n  x = 1;\n  constructor(value: T) {}\n  get size(): number {\n    return this.x\n  }\n  set size(x: number) {\n    this.x = x\n  }\n  static *m<U>(a: U): AsyncGenerator<U> {\n    yield a\n  }\n}\n',
     )
   })
 
