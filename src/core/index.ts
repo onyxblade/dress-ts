@@ -1,6 +1,6 @@
 export * from './types'
 export { Render, Dispatch, compose, createCtx, withTransforms, claim } from './render'
-export { Verbatim, VerbatimScope, NodeSpan, childNodes } from './verbatim'
+export { Verbatim, VerbatimScope, NodeSpan, nodeId, childNodes } from './verbatim'
 export { Line, LineOwner, Indent, Join, Lines, CommentLines } from './layout'
 export { CommentText, allComments, attachComments, type Comment, type Attached, type CommentMap } from './comments'
 export { kindName } from './kind'

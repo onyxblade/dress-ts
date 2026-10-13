@@ -39,8 +39,10 @@ src/core/          building blocks shared by every theme
   render.tsx       <Render> dispatches to a component, with the child's comments; <Dispatch> without;
                    compose() stacks transforms on a base resolver; claim(guard, Component) is the usual
                    transform; withTransforms() scopes transforms to one component's subtree
-  verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan
-  layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for
+  verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan tags every node
+                   with its kind and, via nodeId(), an identity that is the same in any reading of the file
+  layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for,
+                   and the line carries that node's identity, so designed components need not
   comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
   program.ts       createMemoryProgram(): a ts.Program over files given as text, libs supplied by the caller
   semantic.tsx     semanticIdentifiers: every identifier tagged with its role from the checker, its type as a title
@@ -53,7 +55,8 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
-                   not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker)
+                   not themes are the baselines `source` (Verbatim only) and `typed` (Verbatim plus the checker);
+                   hovering a node on one side marks the same node on the other, by nodeId
 src/main.tsx       bundle the lib files, build a program over sample.ts, mount the page
 test/core/         tests for the core building blocks
 ```

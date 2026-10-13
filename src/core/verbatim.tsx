@@ -14,6 +14,15 @@ export function childNodes(node: ts.Node): ts.Node[] {
   return out.sort((a, b) => a.pos - b.pos)
 }
 
+/**
+ * The identity of a node across renders of the same file: its kind and its
+ * range. Two readings of one file can be lined up by it, node for node,
+ * even when their lines no longer correspond.
+ */
+export function nodeId(node: ts.Node): string {
+  return `${kindName(node.kind)}@${node.pos}-${node.end}`
+}
+
 /** The kind-tagged span every node component wraps itself in. */
 export function NodeSpan({
   node,
@@ -21,7 +30,7 @@ export function NodeSpan({
   ...attrs
 }: { node: ts.Node; children?: preact.ComponentChildren; title?: string } & Record<`data-${string}`, string | undefined>) {
   return (
-    <span data-kind={kindName(node.kind)} {...attrs}>
+    <span data-kind={kindName(node.kind)} data-node={nodeId(node)} {...attrs}>
       {children}
     </span>
   )

@@ -2,7 +2,7 @@ import type ts from 'typescript'
 import { createContext } from 'preact'
 import type { Ctx } from './types'
 import { Dispatch, Render } from './render'
-import { VerbatimScope } from './verbatim'
+import { VerbatimScope, nodeId } from './verbatim'
 import { CommentText, type Comment } from './comments'
 
 /**
@@ -15,6 +15,8 @@ import { CommentText, type Comment } from './comments'
  * The node a Line was laid out for, when it was laid out for one. A
  * component rendering that node can tell it has the line to itself (up to
  * trailing comments), which is how the Ruby theme knows a `;` closes a line.
+ * The line also carries that node's identity (`data-node`), so a designed
+ * component that writes its own markup is still findable by node.
  */
 export const LineOwner = createContext<ts.Node | null>(null)
 
@@ -26,7 +28,7 @@ export function Line({
   return (
     <VerbatimScope.Provider value={null}>
       <LineOwner.Provider value={node}>
-        <div class="line" {...attrs}>
+        <div class="line" data-node={node ? nodeId(node) : undefined} {...attrs}>
           {children}
         </div>
       </LineOwner.Provider>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import ts from 'typescript'
-import { renderText } from '../../src/core/testing'
+import { renderHtml, renderText } from '../../src/core/testing'
 import { Indent, Line, Lines, claim, type NodeProps } from '../../src/core'
 
 // A block laid out semantically: statements as lines inside an indent.
@@ -25,5 +25,11 @@ describe('layout', () => {
 
   it('nests layouts', () => {
     expect(renderText('{ { a } }', blocks)).toBe('{\n  {\n    a\n  }\n}\n')
+  })
+
+  it('gives a line the identity of the node it is laid out for', () => {
+    const html = renderHtml('{ a }', blocks)
+    expect(html).toContain('<div class="line" data-node="ExpressionStatement@1-3">')
+    expect(html).toContain('<div class="line">{</div>')
   })
 })

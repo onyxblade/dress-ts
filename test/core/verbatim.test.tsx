@@ -30,4 +30,10 @@ describe('Verbatim', () => {
     expect(html).toContain('data-kind="VariableStatement"')
     expect(html).toContain('data-kind="NumericLiteral"')
   })
+
+  it('tags each node with an identity that survives a different reading', () => {
+    const html = renderHtml('const a = 1')
+    expect(html).toContain('data-node="VariableStatement@0-11"')
+    expect(html).toContain('data-node="NumericLiteral@9-11"')
+  })
 })
