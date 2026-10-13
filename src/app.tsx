@@ -103,6 +103,18 @@ interface Hovered {
   range: NodeRange
 }
 
+/**
+ * Where an element's text is on screen. Not its own rect: a reading mark
+ * is `display: contents` (see style.css), with no box of its own, and it
+ * is the hovered element when a theme's word fills a whole token, `self`
+ * for `this`. A Range over the contents measures the text either way.
+ */
+function boxOf(el: Element): DOMRect {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  return range.getBoundingClientRect()
+}
+
 /** The first line of a node as written, which is what a reading replaced. */
 function written(node: ts.Node, sourceFile: ts.SourceFile): string {
   const text = sourceFile.text.slice(node.getStart(sourceFile), node.end)
@@ -134,7 +146,7 @@ function cardAt(e: MouseEvent, service: ts.LanguageService, fileName: string): S
   if (!h) return null
   const info = quickInfoAt(service, fileName, h.range)
   if (info) {
-    const r = h.el.getBoundingClientRect()
+    const r = boxOf(h.el)
     return { card: { kind: 'info', info }, at: { left: r.left, top: r.bottom }, pinned: false }
   }
   const reading = readingOf(h, service.getProgram()!.getSourceFile(fileName)!)
