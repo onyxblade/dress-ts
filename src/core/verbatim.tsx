@@ -2,7 +2,7 @@ import ts from 'typescript'
 import { createContext } from 'preact'
 import { useContext } from 'preact/hooks'
 import type { NodeProps } from './types'
-import { Render } from './render'
+import { Dispatch } from './render'
 import { kindName } from './kind'
 
 /** Semantic children of a node in source order, as `forEachChild` sees them. */
@@ -57,7 +57,8 @@ export const VerbatimScope = createContext<number | null>(null)
  * Fallback for any node nobody has designed a component for: show its
  * original text. Semantic children are rendered recursively (so a designed
  * component can still take over deep inside); the tokens, whitespace and
- * comments between them are emitted as they were.
+ * comments between them are emitted as they were, which is why children
+ * are dispatched bare: their comments are already in the gap text.
  *
  * A node's text starts after its leading trivia, so that trivia (including
  * comments) is the responsibility of whoever lays the node out: here, the
@@ -82,7 +83,7 @@ export function Verbatim({ node, ctx, end = node.end }: NodeProps & { end?: numb
     const childStart = startOf(child, sourceFile)
     if (childStart < cursor) continue // defensive: overlapping node
     if (childStart > cursor) parts.push(dedent(text.slice(cursor, childStart), width))
-    parts.push(<Render key={child.pos} node={child} ctx={ctx} />)
+    parts.push(<Dispatch key={child.pos} node={child} ctx={ctx} />)
     cursor = child.end
   }
   if (cursor < end) parts.push(dedent(text.slice(cursor, end), width))

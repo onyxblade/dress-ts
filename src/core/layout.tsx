@@ -1,9 +1,9 @@
 import type ts from 'typescript'
 import { createContext } from 'preact'
 import type { Ctx } from './types'
-import { Render } from './render'
+import { Dispatch, Render } from './render'
 import { VerbatimScope } from './verbatim'
-import { leadingComments, trailingComments, type Comment } from './comments'
+import { CommentText, type Comment } from './comments'
 
 /**
  * The layout vocabulary components build from. Layout is HTML structure
@@ -42,10 +42,6 @@ export function Indent({ children }: { children?: preact.ComponentChildren }) {
   )
 }
 
-export function CommentText({ comment }: { comment: Comment }) {
-  return <span class="comment">{comment.text}</span>
-}
-
 /** Render nodes inline with a separator between them: parameters, type arguments. */
 export function Join({ nodes, sep, ctx }: { nodes: readonly ts.Node[] | undefined; sep: string; ctx: Ctx }) {
   return (
@@ -60,41 +56,57 @@ export function Join({ nodes, sep, ctx }: { nodes: readonly ts.Node[] | undefine
   )
 }
 
+/** Comments on lines of their own, with a gap before the first when asked. */
+export function CommentLines({ comments, gap = false }: { comments: readonly Comment[]; gap?: boolean }) {
+  return (
+    <>
+      {comments.map((c, j) => (
+        <Line key={c.pos} data-gap={gap && j === 0 ? '' : undefined}>
+          <CommentText comment={c} />
+        </Line>
+      ))}
+    </>
+  )
+}
+
 /**
  * Statement-like nodes, one per Line, with their comments: leading
  * comments get lines of their own, a trailing comment stays on the line.
  * A blank line in the source between two nodes is kept as a gap, since
  * authors use those to group.
+ *
+ * `within` is the node the list is the body of (a block, a class, the
+ * file). Comments after its last child dangle from it, in the AST's terms
+ * from nothing, and are given lines at the end so they are not lost.
  */
-export function Lines({ nodes, ctx }: { nodes: readonly ts.Node[]; ctx: Ctx }) {
-  const { sourceFile } = ctx
+export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; within?: ts.Node; ctx: Ctx }) {
+  const { sourceFile, comments } = ctx
   const lineOf = (pos: number) => sourceFile.getLineAndCharacterOfPosition(pos).line
+  const gapBefore = (pos: number, prev: ts.Node | undefined) => prev !== undefined && lineOf(pos) - lineOf(prev.end) > 1
+  const dangling = within ? comments.of(within).dangling : []
+  const last = nodes[nodes.length - 1]
   return (
     <>
       {nodes.map((n, i) => {
-        const prev = nodes[i - 1]
-        const comments = leadingComments(n, sourceFile)
-        const first = comments[0]?.pos ?? n.getStart(sourceFile)
-        const gap = prev !== undefined && lineOf(first) - lineOf(prev.end) > 1
+        const { leading, trailing } = comments.of(n)
+        const first = leading[0]?.pos ?? n.getStart(sourceFile)
+        const gap = gapBefore(first, nodes[i - 1])
         return (
           <>
-            {comments.map((c, j) => (
-              <Line key={`c${n.pos}-${j}`} data-gap={gap && j === 0 ? '' : undefined}>
-                <CommentText comment={c} />
-              </Line>
-            ))}
-            <Line key={n.pos} node={n} data-gap={gap && comments.length === 0 ? '' : undefined}>
-              <Render node={n} ctx={ctx} />
-              {trailingComments(n, sourceFile).map((c, j) => (
+            <CommentLines comments={leading} gap={gap} />
+            <Line key={n.pos} node={n} data-gap={gap && leading.length === 0 ? '' : undefined}>
+              <Dispatch node={n} ctx={ctx} />
+              {trailing.map((c) => (
                 <>
                   {' '}
-                  <CommentText key={j} comment={c} />
+                  <CommentText key={c.pos} comment={c} />
                 </>
               ))}
             </Line>
           </>
         )
       })}
+      {dangling.length > 0 && <CommentLines comments={dangling} gap={gapBefore(dangling[0].pos, last)} />}
     </>
   )
 }

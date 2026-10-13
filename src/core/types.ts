@@ -1,5 +1,6 @@
 import type ts from 'typescript'
 import type { ComponentType } from 'preact'
+import type { CommentMap } from './comments'
 
 /**
  * Props every node component receives: the AST node it is responsible for,
@@ -15,10 +16,12 @@ export type NodeComponent = ComponentType<NodeProps>
 /**
  * Shared context threaded through the whole render.
  * `resolve` is the single extension point: it decides which component
- * renders a given node. Transforms wrap it.
+ * renders a given node. Transforms wrap it. `comments` is where each
+ * comment of the file was attached, since the AST does not carry them.
  */
 export interface Ctx {
   sourceFile: ts.SourceFile
+  comments: CommentMap
   resolve: Resolve
 }
 

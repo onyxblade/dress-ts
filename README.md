@@ -32,14 +32,15 @@ build their own variant.
 ```
 src/core/          building blocks shared by every theme
   types.ts         NodeProps<N> / Ctx / Resolve / Transform / Theme
-  render.tsx       <Render> dispatches to a component; compose() stacks transforms on a base resolver;
-                   claim(guard, Component) is the usual transform; withTransforms() scopes transforms
-                   to one component's subtree
+  render.tsx       <Render> dispatches to a component, with the child's comments; <Dispatch> without;
+                   compose() stacks transforms on a base resolver; claim(guard, Component) is the usual
+                   transform; withTransforms() scopes transforms to one component's subtree
   verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan
   layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for
-  comments.ts      leadingComments() / trailingComments(), since the semantic AST has none
+  comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
-  testing.tsx      renderText() / renderHtml() for tests; not re-exported from index to keep it out of the bundle
+  testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
+                   it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, no line-ending `;`
@@ -69,7 +70,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) { // function de
       </span>
       {node.body && (
         <>
-          <Indent><Lines nodes={node.body.statements} ctx={ctx} /></Indent>
+          <Indent><Lines nodes={node.body.statements} within={node.body} ctx={ctx} /></Indent>
           <Line>end</Line>
         </>
       )}
@@ -103,8 +104,7 @@ Two details make the fallback coexist with designed layout:
 
 - A node's verbatim text starts *after* its leading trivia. Comments before
   a node belong to whoever lays the node out: the parent's gap text in
-  `Verbatim`, or `Lines`, which asks `leadingComments()` and gives each its
-  own line.
+  `Verbatim`, or `Lines`, which gives each its own line (see Comments).
 - Multi-line verbatim text is shown relative to the indentation of its
   first line, so an undesigned `if` block placed under an `Indent` lines up
   with its designed siblings. `Line` and `Indent` reset that scope.
@@ -120,6 +120,45 @@ the first place; the variant covers the kinds nobody has designed yet.
 
 A theme whose output is not text would supply its own fallback, such as a
 box showing the source.
+
+## Comments
+
+A reader can only trust a rendering that keeps every comment, and the
+semantic AST keeps none: comments are trivia, found by position queries
+around tokens. A designed component writes its own tokens, so a comment
+that sat next to a `{` or a `)` in the source has nothing to follow unless
+someone owns it.
+
+`attachComments()` decides ownership once per file, the way Prettier does.
+Every comment is placed among the semantic children of the innermost node
+enclosing it: on the same line after a child it *trails* that child, before
+a child it *leads* that child, and after the last child (or in a node with
+no children, `function f() { // todo }`) it *dangles* from the enclosing
+node. The result is `ctx.comments`.
+
+The rule that follows is: the component rendering the enclosing node emits
+the comments attached to its children.
+
+- `Verbatim` does so already: its gap text holds them. It dispatches
+  children bare, through `Dispatch`.
+- `Render` emits the leading and trailing comments of the child it is
+  handed, inline, so a designed component that puts a child somewhere keeps
+  the child's comments without asking.
+- `Lines` gives leading comments lines of their own, keeps a trailing one on
+  the statement's line, and, given the node the list is the body of
+  (`within`), ends with that node's dangling comments.
+
+What a designed component can still get wrong is skipping a node (rendering
+its grandchildren directly, so nobody renders the comments attached to the
+child) or leaving out `within`. `lostComments()` in `testing.tsx` lists the
+comments of a source that its rendering does not show, and each theme's
+tests assert it is empty over the sample and over its own inputs. The Ruby
+theme's `if` is the one place with such a skipped node, the branch blocks,
+and puts their comments on the `else`/`elsif` line.
+
+A `//` comment attached to a node that `Join` renders inline, as in a
+multi-line parameter list, is shown inline too: nothing is lost, but the
+line layout for such lists is still to be designed.
 
 ## Scoping
 

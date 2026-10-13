@@ -1,11 +1,43 @@
 import type ts from 'typescript'
 import type { ComponentType } from 'preact'
 import type { Ctx, NodeComponent, NodeProps, Resolve, Transform } from './types'
+import { CommentText, attachComments } from './comments'
 
-/** Dispatch: ask ctx.resolve which component should render this node. */
-export function Render({ node, ctx }: NodeProps) {
+/**
+ * Dispatch only: ask ctx.resolve which component renders this node, and
+ * nothing else. For the places that lay a node's comments out themselves:
+ * `Verbatim`, whose gap text already holds them, and `Lines`, which gives
+ * leading comments lines of their own.
+ */
+export function Dispatch({ node, ctx }: NodeProps) {
   const Component = ctx.resolve(node, ctx)
   return <Component node={node} ctx={ctx} />
+}
+
+/**
+ * Render a child where a designed component puts it. The component writes
+ * its own tokens around the child, so the comments attached to the child
+ * would otherwise go with the tokens; they are emitted here, inline, so a
+ * designed component keeps every comment without asking for them.
+ */
+export function Render({ node, ctx }: NodeProps) {
+  const { leading, trailing } = ctx.comments.of(node)
+  return (
+    <>
+      {leading.map((c) => (
+        <>
+          <CommentText key={c.pos} comment={c} />{' '}
+        </>
+      ))}
+      <Dispatch node={node} ctx={ctx} />
+      {trailing.map((c) => (
+        <>
+          {' '}
+          <CommentText key={c.pos} comment={c} />
+        </>
+      ))}
+    </>
+  )
 }
 
 /**
@@ -17,7 +49,7 @@ export function compose(base: Resolve, transforms: Transform[]): Resolve {
 }
 
 export function createCtx(sourceFile: ts.SourceFile, resolve: Resolve): Ctx {
-  return { sourceFile, resolve }
+  return { sourceFile, comments: attachComments(sourceFile), resolve }
 }
 
 /**

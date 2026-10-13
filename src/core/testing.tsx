@@ -1,6 +1,6 @@
 import ts from 'typescript'
 import { render } from 'preact-render-to-string'
-import { Render, Verbatim, compose, createCtx, type Transform } from '.'
+import { Render, Verbatim, allComments, compose, createCtx, type Transform } from '.'
 
 /** Render source text to HTML with the given transforms. */
 export function renderHtml(text: string, transforms: Transform[] = []): string {
@@ -12,6 +12,19 @@ export function renderHtml(text: string, transforms: Transform[] = []): string {
 /** Render source text and reduce the HTML to what the reader sees. */
 export function renderText(text: string, transforms: Transform[] = []): string {
   return htmlToText(renderHtml(text, transforms))
+}
+
+/**
+ * The comments of the source that the rendering does not show. A reader
+ * trusts a rendering only if it keeps every comment, so tests assert this
+ * is empty for every theme over every input they have.
+ */
+export function lostComments(text: string, transforms: Transform[] = []): string[] {
+  const sf = ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true)
+  const shown = renderText(text, transforms)
+  return allComments(sf)
+    .map((c) => c.text)
+    .filter((t) => !shown.includes(t))
 }
 
 const INDENT = '  '

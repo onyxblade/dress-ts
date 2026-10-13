@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import { Indent, Line, Lines, Render, claim, type Ctx, type NodeProps } from '../../core'
+import { CommentText, Indent, Line, Lines, Render, claim, type Ctx, type NodeProps } from '../../core'
 
 /**
  * The branch body: a block's statements, or a lone statement, one per line
@@ -7,11 +7,30 @@ import { Indent, Line, Lines, Render, claim, type Ctx, type NodeProps } from '..
  * the same as a one-statement block.
  */
 function Branch({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }) {
-  const nodes = ts.isBlock(statement) ? statement.statements : [statement]
+  const block = ts.isBlock(statement) ? statement : undefined
   return (
     <Indent>
-      <Lines nodes={nodes} ctx={ctx} />
+      <Lines nodes={block ? block.statements : [statement]} within={block} ctx={ctx} />
     </Indent>
+  )
+}
+
+/**
+ * Comments around the braces between two branches (`} // a` before `else`,
+ * a block comment between `else` and `{`) are attached to the blocks, which
+ * this component never renders as such. They go on the keyword line.
+ */
+function Between({ before, after, ctx }: { before: ts.Statement; after: ts.Statement; ctx: Ctx }) {
+  const comments = [...ctx.comments.of(before).trailing, ...ctx.comments.of(after).leading]
+  return (
+    <>
+      {comments.map((c) => (
+        <>
+          {' '}
+          <CommentText key={c.pos} comment={c} />
+        </>
+      ))}
+    </>
   )
 }
 
@@ -20,21 +39,27 @@ function Branch({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }) {
  * own `end` but an `elsif` line of the same construct, so the chain is
  * flattened here rather than handed to the resolver.
  */
-function Else({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }) {
+function Else({ before, statement, ctx }: { before: ts.Statement; statement: ts.Statement; ctx: Ctx }) {
   if (ts.isIfStatement(statement)) {
     return (
       <>
         <Line>
           elsif <Render node={statement.expression} ctx={ctx} />
+          <Between before={before} after={statement} ctx={ctx} />
         </Line>
         <Branch statement={statement.thenStatement} ctx={ctx} />
-        {statement.elseStatement && <Else statement={statement.elseStatement} ctx={ctx} />}
+        {statement.elseStatement && (
+          <Else before={statement.thenStatement} statement={statement.elseStatement} ctx={ctx} />
+        )}
       </>
     )
   }
   return (
     <>
-      <Line>else</Line>
+      <Line>
+        else
+        <Between before={before} after={statement} ctx={ctx} />
+      </Line>
       <Branch statement={statement} ctx={ctx} />
     </>
   )
@@ -75,7 +100,7 @@ export function RubyIf({ node, ctx }: NodeProps<ts.IfStatement>) {
         if <Render node={node.expression} ctx={ctx} />
       </span>
       <Branch statement={node.thenStatement} ctx={ctx} />
-      {node.elseStatement && <Else statement={node.elseStatement} ctx={ctx} />}
+      {node.elseStatement && <Else before={node.thenStatement} statement={node.elseStatement} ctx={ctx} />}
       <Line>end</Line>
     </>
   )

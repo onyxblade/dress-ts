@@ -45,7 +45,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
       {node.body && (
         <>
           <Indent>
-            <Lines nodes={node.body.statements} ctx={ctx} />
+            <Lines nodes={node.body.statements} within={node.body} ctx={ctx} />
           </Indent>
           <Line>end</Line>
         </>

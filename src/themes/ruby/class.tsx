@@ -27,7 +27,7 @@ export function RubyClass({ node, ctx }: NodeProps<ts.ClassLikeDeclaration>) {
         ))}
       </span>
       <Indent>
-        <Lines nodes={node.members} ctx={ctx} />
+        <Lines nodes={node.members} within={node} ctx={ctx} />
       </Indent>
       <Line>end</Line>
     </>
