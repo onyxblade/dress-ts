@@ -55,10 +55,9 @@ src/core/          building blocks shared by every theme
   testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
                    it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
-  ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
-                   `if ... elsif ... else ... end`, guards as `return 0 if x`, `new Foo(a)` as `Foo.new(a)`,
-                   generics as `Set[string]`, `this` as `self`, a field `this.x` as `@x` and its declaration
-                   `private readonly x = v` as `@x = v`, no line-ending `;`
+  ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`, `return 0 if x`,
+                   `Foo.new(a)`, `Set[string]`, `self` and `@x`, no line-ending `;`
+  ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/app.tsx        demo page: sample.ts twice, side by side, each pane choosing a view; the two views that are
@@ -145,36 +144,26 @@ Two details make the fallback coexist with designed layout:
   with its designed siblings. `Line` and `Indent` reset that scope.
 
 A theme can also supply its own fallback for the kinds it has not
-designed. The Ruby theme's `RubyVerbatim` is `Verbatim` with *edits*:
-replacements of source ranges in the text between children, which is the
-text no child's component owns. Each edit is a rule answering for one
-node, and one fallback applies every rule, since a node can need several
-at once (`type Pair<T> = [T, T];` loses its `;` and respells its `<T>`):
-
-- `closingSemicolon` drops a `;` that closes the line, since Ruby ends a
-  statement with the line. Whether it closes a line is a layout question,
-  answered by layout: the node owns a `Line` (the `LineOwner` context set
-  by `Lines`), or, inside a verbatim region, nothing but a trailing comment
-  follows it in the source.
-- `squareTypeLists` shows a type parameter or argument list in Ruby's
-  brackets, `Set[string]`, `type Pair[T]`, `f[T](x)`. The parser leaves a
-  list's range between its delimiters, so the `<` before it and the `>`
-  after it sit in the gaps, where an edit can reach them; a nested list
-  belongs to a nested node, which handles its own.
+designed: `Verbatim` with *edits*, replacements of source ranges in the
+text between children, which is the text no child's component owns. An
+edit is `{ from, to, text, note }`; a theme's fallback computes the edits
+for the node it is given and hands them to `Verbatim`, which applies them
+all, since a node can need several at once. The Ruby theme's fallback
+drops a `;` that closes a line and respells `Set<string>` as
+`Set[string]` this way; its README has the rules.
 
 Each edit carries a note, and a node an edit applied to is wrapped in a
 `Reading` mark with the notes of its edits, like a designed component's
 output: the pointer on `[` in `Set[string]` gets the card with
 `` `Set<string>` reads as `Set[string]` `` and the node as written. The
 text an edit wrote is tinted like the theme's own words, through a span
-of its own, since inside a node span the ink is the source's. A dropped
-`;` writes nothing, so there is no word to tint or to point at; the mark
-on the statement still answers, on its keyword or the end of its line.
+of its own, since inside a node span the ink is the source's. An edit
+that writes nothing, a dropped `;`, leaves no word to tint or to point
+at; the mark on the node still answers, on its keyword or the end of its
+line.
 
-A designed component for `return` or for a type reference would never
-write the `;` or the `<` in the first place, and the designed ones write
-`[` themselves through the theme's `TypeList`; the rules cover the kinds
-nobody has designed yet.
+A designed component would never write the token an edit removes in the
+first place; the rules cover the kinds nobody has designed yet.
 
 A theme whose output is not text would supply a fallback of its own kind,
 such as a box showing the source.
@@ -214,9 +203,10 @@ What a designed component can still get wrong is skipping a node (rendering
 its grandchildren directly, so nobody renders the comments attached to the
 child) or leaving out `within`. `lostComments()` in `testing.tsx` lists the
 comments of a source that its rendering does not show, and each theme's
-tests assert it is empty over the sample and over its own inputs. The Ruby
-theme's `if` is the one place with such a skipped node, the branch blocks,
-and puts their comments on the `else`/`elsif` line.
+tests assert it is empty over the sample and over its own inputs. A
+component that does skip a node, as the Ruby theme's `if` does with its
+branch blocks and its `@x` with the `this`, emits that node's comments
+itself, with `CommentText`, at the nearest place it writes.
 
 A `//` comment attached to a node that `Join` renders inline, as in a
 multi-line parameter list, is shown inline too: nothing is lost, but the
@@ -249,11 +239,9 @@ Imports the program cannot see (`node:fs` in the sample) are diagnostics,
 and what they bring in is typed `any`. The checker answers everything else
 around them, so a component treats `any` as "unknown", never as a fact.
 
-A claim can depend on the checker too: `claim`'s guard gets the ctx. The
-Ruby theme's `rubyInstanceVariable` takes `this.x` only when the checker
-says `x` is a field, and shows it as `@x`; `this.walk(p)` on a method
-falls through to the fallback, where `this` reads as `self`, since Ruby's
-`@walk(p)` is not a call.
+A claim can depend on the checker too: `claim`'s guard gets the ctx, so
+a theme can claim `this.x` only when the checker says `x` is a field, as
+the Ruby theme does for `@x`, and leave a method call to the next layer.
 
 `semanticIdentifiers` in `semantic.tsx` is the first reading effect built
 on it: a transform that claims every identifier and tags it with its role
