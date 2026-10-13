@@ -48,9 +48,10 @@ export function squareTypeLists(node: ts.Node, { sourceFile: { text } }: Ctx): E
     const open = list.pos - 1
     const close = tokenAfter(text, list.end)
     if (text[open] !== '<' || text[close] !== '>') return []
+    const note = '`Set<string>` reads as `Set[string]`'
     return [
-      { from: open, to: open + 1, text: '[' },
-      { from: close, to: close + 1, text: ']' },
+      { from: open, to: open + 1, text: '[', note },
+      { from: close, to: close + 1, text: ']', note },
     ]
   })
 }

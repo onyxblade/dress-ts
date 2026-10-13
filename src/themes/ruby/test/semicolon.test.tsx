@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderText } from '../../../core/testing'
+import { renderHtml, renderText } from '../../../core/testing'
 import { rubyFallback } from '../fallback'
 import { rubySourceFile } from '../sourceFile'
 import { rubyClass } from '../class'
@@ -30,6 +30,13 @@ describe('closingSemicolon', () => {
 
   it('drops it from a guard body, which shares the if line', () => {
     expect(show('if (x) return 0;')).toBe('return 0 if x\n')
+  })
+
+  it('marks the statement as a reading, since nothing is left to point at', () => {
+    expect(renderHtml('f();', [rubyFallback])).toContain('data-reading="`f();` reads as `f()`" data-node="ExpressionStatement@0-4"')
+    expect(renderHtml('type P<T> = T;', [rubyFallback])).toContain(
+      'data-reading="`Set&lt;string>` reads as `Set[string]`; `f();` reads as `f()`" data-node="TypeAliasDeclaration@0-14"',
+    )
   })
 
   it('leaves a semicolon-free source alone', () => {

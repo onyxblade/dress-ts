@@ -2,7 +2,7 @@ import ts from 'typescript'
 import { createContext } from 'preact'
 import { useContext } from 'preact/hooks'
 import type { NodeProps } from './types'
-import { Dispatch } from './render'
+import { Dispatch, Reading } from './render'
 import { kindName } from './kind'
 import { nodeId } from './identity'
 
@@ -73,22 +73,21 @@ export const VerbatimScope = createContext<number | null>(null)
  * `<T>` as `[T]`. An edit replaces one source range with a string, and
  * must lie within a gap; one reaching into a child is left unapplied,
  * since the child's component owns that text.
+ *
+ * An edit is a reading, the same as a designed component's output: the
+ * node is shown in a form the source never had. So a node with an edit
+ * applied is wrapped in a Reading mark carrying the notes of its edits,
+ * and the text an edit wrote is tinted the way the theme's own words are,
+ * through a span of its own, since inside a node span the ink is the
+ * source's. A deletion writes nothing, so it has no word to tint, but the
+ * mark on the node still says what was left out.
  */
 export interface Edit {
   from: number
   to: number
   text: string
-}
-
-/** The text of `[from, to)` with the edits inside it applied, in position order. */
-function edited(text: string, from: number, to: number, edits: readonly Edit[]): string {
-  let out = ''
-  let cursor = from
-  for (const e of [...edits].filter((e) => e.from >= from && e.to <= to).sort((a, b) => a.from - b.from)) {
-    out += text.slice(cursor, e.from) + e.text
-    cursor = e.to
-  }
-  return out + text.slice(cursor, to)
+  /** What the edit shows instead of the source, in a line: `` `f();` reads as `f()` ``. */
+  note: string
 }
 
 export function Verbatim({ node, ctx, edits = [] }: NodeProps & { edits?: readonly Edit[] }) {
@@ -98,7 +97,20 @@ export function Verbatim({ node, ctx, edits = [] }: NodeProps & { edits?: readon
   const start = startOf(node, sourceFile)
   const width = inherited ?? lineIndentAt(text, start)
 
-  const gap = (from: number, to: number) => dedent(edited(text, from, to, edits), width)
+  const applied: Edit[] = []
+  /** The text of `[from, to)` with the edits inside it applied, in position order. */
+  const gap = (from: number, to: number) => {
+    const out: preact.ComponentChildren[] = []
+    let cursor = from
+    for (const e of [...edits].filter((e) => e.from >= from && e.to <= to).sort((a, b) => a.from - b.from)) {
+      out.push(dedent(text.slice(cursor, e.from), width))
+      if (e.text) out.push(<span class="edit">{e.text}</span>)
+      applied.push(e)
+      cursor = e.to
+    }
+    out.push(dedent(text.slice(cursor, to), width))
+    return out
+  }
   const parts: preact.ComponentChildren[] = []
   let cursor = start
   for (const child of childNodes(node)) {
@@ -110,6 +122,8 @@ export function Verbatim({ node, ctx, edits = [] }: NodeProps & { edits?: readon
   }
   if (cursor < node.end) parts.push(gap(cursor, node.end))
 
+  const notes = [...new Set(applied.map((e) => e.note))]
   const span = <NodeSpan node={node}>{parts}</NodeSpan>
-  return inherited === null ? <VerbatimScope.Provider value={width}>{span}</VerbatimScope.Provider> : span
+  const marked = notes.length > 0 ? <Reading node={node} note={notes.join('; ')}>{span}</Reading> : span
+  return inherited === null ? <VerbatimScope.Provider value={width}>{marked}</VerbatimScope.Provider> : marked
 }

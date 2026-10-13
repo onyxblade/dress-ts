@@ -120,8 +120,9 @@ words inside a mark that are not inside a node span, which is exactly the
 theme's own words: `def`, `end`, `.new`, since every word of the source
 sits in a node span and takes the ink colour back. The page shows the note
 and the node as written when the pointer is on those words. A transform
-that only tags or edits the source text in place, like `semanticIdentifiers`
-or the Ruby theme's fallback, has no note and leaves no mark.
+that only tags the source text, like `semanticIdentifiers`, has no note and
+leaves no mark. An edit to verbatim text (see The fallback) is a reading
+too, and `Verbatim` marks the node the same way.
 
 ## The fallback
 
@@ -158,6 +159,15 @@ at once (`type Pair<T> = [T, T];` loses its `;` and respells its `<T>`):
   list's range between its delimiters, so the `<` before it and the `>`
   after it sit in the gaps, where an edit can reach them; a nested list
   belongs to a nested node, which handles its own.
+
+Each edit carries a note, and a node an edit applied to is wrapped in a
+`Reading` mark with the notes of its edits, like a designed component's
+output: the pointer on `[` in `Set[string]` gets the card with
+`` `Set<string>` reads as `Set[string]` `` and the node as written. The
+text an edit wrote is tinted like the theme's own words, through a span
+of its own, since inside a node span the ink is the source's. A dropped
+`;` writes nothing, so there is no word to tint or to point at; the mark
+on the statement still answers, on its keyword or the end of its line.
 
 A designed component for `return` or for a type reference would never
 write the `;` or the `<` in the first place, and the designed ones write

@@ -77,6 +77,10 @@ body {
   display: contents;
   color: #a8559a;
 }
+/* A word the fallback wrote in place of the source's, `[` for `<` (see core Verbatim edits): tinted like the theme's own. */
+.edit {
+  color: #a8559a;
+}
 .reading-info .note {
   margin: 0;
   font-family: system-ui, sans-serif;

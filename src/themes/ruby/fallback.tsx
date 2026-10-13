@@ -9,8 +9,9 @@ import { squareTypeLists } from './generics'
  * with the ranges it would change on this node; one fallback applies them
  * all, since a node can need several at once, `type Pair<T> = [T, T];`.
  *
- * Goes last, so designed components claim first. It leaves no Reading
- * mark: the text is still the source's, trimmed or respelled in place.
+ * Goes last, so designed components claim first. A node an edit applied
+ * to carries a Reading mark with the edits' notes, as `Verbatim` does for
+ * any edit, so the reader can tell `Set[string]` from what the file says.
  */
 export function RubyVerbatim({ node, ctx }: NodeProps) {
   return <Verbatim node={node} ctx={ctx} edits={[...closingSemicolon(node, ctx), ...squareTypeLists(node, ctx)]} />

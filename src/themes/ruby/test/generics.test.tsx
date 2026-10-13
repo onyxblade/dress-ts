@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lostComments, renderText } from '../../../core/testing'
+import { lostComments, renderHtml, renderText } from '../../../core/testing'
 import { rubyFallback } from '../fallback'
 import { rubyFunction } from '../function'
 import { rubyClass } from '../class'
@@ -41,6 +41,13 @@ describe('squareTypeLists', () => {
     expect(show('let s: Set</* c */ string /* d */>')).toBe('let s: Set[/* c */ string /* d */]\n')
     expect(show('let m: Map<\n  string,\n  number\n>')).toBe('let m: Map[\n  string,\n  number\n]\n')
     expect(lostComments('let s: Set</* c */ string // d\n>', [rubyFallback])).toEqual([])
+  })
+
+  it('marks a respelled node as a reading, its brackets as the theme\'s words', () => {
+    const html = renderHtml('let s: Set<string>', [rubyFallback])
+    expect(html).toContain('data-reading="`Set&lt;string>` reads as `Set[string]`" data-node="TypeReference@6-18"')
+    expect(html).toContain('<span class="edit">[</span>')
+    expect(html).toContain('<span class="edit">]</span>')
   })
 
   it('leaves other angle brackets alone', () => {

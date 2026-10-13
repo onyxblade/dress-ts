@@ -38,5 +38,5 @@ export function closingSemicolon(node: ts.Node, { sourceFile }: Ctx): Edit[] {
   const ownsLine = useContext(LineOwner) === node
   const closes =
     canEndInSemicolon(node) && sourceFile.text[node.end - 1] === ';' && (ownsLine || endsSourceLine(node, sourceFile))
-  return closes ? [{ from: node.end - 1, to: node.end, text: '' }] : []
+  return closes ? [{ from: node.end - 1, to: node.end, text: '', note: '`f();` reads as `f()`' }] : []
 }
