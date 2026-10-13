@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -29,8 +29,13 @@ The order is outermost first. The designed components claim their kinds;
 | `class.tsx` | `extends B` | `< B`, the `implements` left as written |
 | `if.tsx` | `if (x) { ... } else if (y) { ... } else { ... }` | `if x ... elsif y ... else ... end` |
 | `if.tsx` | `if (x) return 0` | `return 0 if x` |
+| `loop.tsx` | `while (x) { ... }`, `while (x) i++` | `while x ... end`, `i++ while x` |
+| `loop.tsx` | `do { ... } while (x)` | `begin ... end while x` |
+| `loop.tsx` | `for (const x of xs) { ... }`, `for (const k in o) { ... }` | `for x of xs ... end`, `for k in o ... end` |
+| `loop.tsx` | `for (;;) { ... }`, `for (let i = 0; i < n; i++) { ... }` | `loop do ... end`, `for (i = 0; i < n; i++) ... end` |
+| `enum.tsx` | `enum E { A = 1, B }` | `enum E ... end`, a member per line |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
-| `variables.tsx` | `const x = 1`, `let x = 1`, `for (const x of xs)` | `x = 1`, `for (x of xs)` |
+| `variables.tsx` | `const x = 1`, `let x = 1`, `for (const x of xs)` | `x = 1`, `for x of xs` |
 | `field.tsx` | `private readonly x = v` | `@x = v` |
 | `field.tsx` | `constructor(private x: T)` | `constructor(@x: T)` |
 | `this.tsx` | `this.x` on a field | `@x` |
@@ -108,6 +113,33 @@ of handing the nested statement to the resolver. The branch blocks are
 never rendered as nodes, so the comments attached to them, `} // a`
 before an `else`, go on the `else`/`elsif` line.
 
+### Loops and enums
+
+`while (x) { ... }` reads as `while x ... end`, the condition without
+parens and the body in an Indent, the same shape as an `if`, by the same
+`Branch`. The braceless `while (c) j++` reads in the modifier form,
+`j++ while c`, under the if guard's rule: the braces are the author's
+signal, and only a jump or a plain expression goes before the `while`.
+`do { ... } while (x)` is Ruby's `begin ... end while x`, the one loop
+whose condition comes after the body; a comment between the `}` and the
+`while` goes on the `end while` line, since the block is never rendered
+as a node.
+
+`for (const x of xs)` reads as `for x of xs`, the parens gone and the
+keyword gone by `rubyVariables`, which claims the declaration list the
+initializer is. The `of` and `in` stay as written: they say different
+things, and Ruby's `in` would hide which one it was. The three-clause
+`for` has no Ruby form, so its header stays as written, parens and all,
+`for (i = 0; i < n; i++)`, and only the braces give way to the Indent and
+`end`; the one Ruby does have is the clauseless `for (;;)`, which reads
+as `loop do`.
+
+`enum E { A = 1, B }` takes the class shape, `enum E ... end`, a member
+per line. Ruby has no enum; the word stays, since a module of constants
+would hide what it was. The commas between members are tokens of the
+enum, not of a member, so they are not written, and a comment after one,
+`A = 1, // c`, trails the member and stays on its line.
+
 ### Construction
 
 `new Foo(a)` is a message to the class, `Foo.new(a)`. Type arguments stay
@@ -122,7 +154,7 @@ are noise: `const x = 1` reads as `x = 1`. The keyword sits in the
 `VariableDeclarationList`'s own range, so `rubyVariables` claims the
 list and joins its declarations; the statement around it stays with the
 fallback, which keeps an `export` or `declare` and drops the `;`, and a
-`for (const x of xs)` reads as `for (x of xs)` by the same claim. Which
+`for (const x of xs)` reads as `for x of xs` by the same claim. Which
 keyword it was is in the node as written, on hover.
 
 ### Fields and the receiver

@@ -2,11 +2,11 @@ import ts from 'typescript'
 import { CommentText, Indent, Line, Lines, Render, claim, type Ctx, type NodeProps } from '../../core'
 
 /**
- * The branch body: a block's statements, or a lone statement, one per line
- * under an Indent. A lone statement that is not a guard (see below) reads
- * the same as a one-statement block.
+ * The body of a branch, or of a loop (see loop.tsx): a block's statements,
+ * or a lone statement, one per line under an Indent. A lone statement
+ * that is not a guard (see below) reads the same as a one-statement block.
  */
-function Branch({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }) {
+export function Branch({ statement, ctx }: { statement: ts.Statement; ctx: Ctx }) {
   const block = ts.isBlock(statement) ? statement : undefined
   return (
     <Indent>
@@ -66,7 +66,7 @@ function Else({ before, statement, ctx }: { before: ts.Statement; statement: ts.
 }
 
 /** Statements that read naturally before a trailing `if`: jumps and plain expressions. */
-const isGuardBody = (s: ts.Statement) =>
+export const isGuardBody = (s: ts.Statement) =>
   ts.isReturnStatement(s) ||
   ts.isThrowStatement(s) ||
   ts.isBreakStatement(s) ||
