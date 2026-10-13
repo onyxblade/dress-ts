@@ -29,3 +29,18 @@ body {
   outline: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 2px;
 }
+/* What an identifier names, per the checker (see core/semantic.tsx). */
+[data-role='class'],
+[data-role='type'] {
+  color: #1a6b8a;
+}
+[data-role='namespace'] {
+  color: #7a4d9c;
+}
+[data-role='function'] {
+  color: #8a4b1a;
+}
+[data-role='unresolved'] {
+  color: #b33;
+  text-decoration: underline dotted;
+}

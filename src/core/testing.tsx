@@ -1,12 +1,31 @@
 import ts from 'typescript'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { render } from 'preact-render-to-string'
-import { Render, Verbatim, allComments, compose, createCtx, type Transform } from '.'
+import { Render, Verbatim, allComments, compose, createCtx, createMemoryProgram, type LibSource, type Transform } from '.'
+
+/** The compiler's lib files, read from the installed `typescript` package. */
+const libDir = dirname(createRequire(import.meta.url).resolve('typescript'))
+export const nodeLibs: LibSource = (name) => {
+  try {
+    return readFileSync(join(libDir, name), 'utf8')
+  } catch {
+    return undefined
+  }
+}
+
+const FILE = 'x.ts'
+
+/** A program over one file of source text, as the tests see it. */
+export function programFor(text: string): ts.Program {
+  return createMemoryProgram({ [FILE]: text }, nodeLibs)
+}
 
 /** Render source text to HTML with the given transforms. */
 export function renderHtml(text: string, transforms: Transform[] = []): string {
-  const sf = ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true)
-  const ctx = createCtx(sf, compose(() => Verbatim, transforms))
-  return render(<Render node={sf} ctx={ctx} />)
+  const ctx = createCtx(programFor(text), FILE, compose(() => Verbatim, transforms))
+  return render(<Render node={ctx.sourceFile} ctx={ctx} />)
 }
 
 /** Render source text and reduce the HTML to what the reader sees. */
@@ -20,9 +39,8 @@ export function renderText(text: string, transforms: Transform[] = []): string {
  * is empty for every theme over every input they have.
  */
 export function lostComments(text: string, transforms: Transform[] = []): string[] {
-  const sf = ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true)
   const shown = renderText(text, transforms)
-  return allComments(sf)
+  return allComments(ts.createSourceFile(FILE, text, ts.ScriptTarget.Latest, true))
     .map((c) => c.text)
     .filter((t) => !shown.includes(t))
 }
@@ -47,7 +65,8 @@ export function htmlToText(html: string): string {
       atLineStart = ch === '\n'
     }
   }
-  const re = /<\/?[^>]+>|[^<]+/g
+  // A tag, with `>` allowed inside quoted attribute values (a type in a title), or text.
+  const re = /<\/?[a-z][^\s>]*(?:\s+[^\s=>]+(?:="[^"]*")?)*\s*\/?>|[^<]+/g
   for (const m of html.match(re) ?? []) {
     if (m[0] !== '<') {
       emit(unescape(m))

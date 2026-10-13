@@ -48,8 +48,15 @@ export function compose(base: Resolve, transforms: Transform[]): Resolve {
   return transforms.reduceRight<Resolve>((next, t) => t(next), base)
 }
 
-export function createCtx(sourceFile: ts.SourceFile, resolve: Resolve): Ctx {
-  return { sourceFile, comments: attachComments(sourceFile), resolve }
+/**
+ * The ctx for one file of a program. The file must come from the program:
+ * the checker only knows the nodes it bound, so a SourceFile parsed on its
+ * own would get no answers.
+ */
+export function createCtx(program: ts.Program, fileName: string, resolve: Resolve): Ctx {
+  const sourceFile = program.getSourceFile(fileName)
+  if (!sourceFile) throw new Error(`${fileName} is not in the program`)
+  return { sourceFile, comments: attachComments(sourceFile), checker: program.getTypeChecker(), resolve }
 }
 
 /**

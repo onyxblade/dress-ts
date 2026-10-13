@@ -26,6 +26,10 @@ build their own variant.
 - The single extension point is `resolve(node, ctx) => Component`. A
   transform is middleware wrapped around `resolve`: it can claim a node by
   returning its own component, or defer to the next layer.
+- The file is one file of a `ts.Program`, and `ctx.checker` is its type
+  checker, so a component can ask what a name refers to and what type it
+  has. The checker reads the same AST; it is the semantic layer the syntax
+  tree does not carry, the way `ctx.comments` is for comments.
 
 ## Layout
 
@@ -38,6 +42,8 @@ src/core/          building blocks shared by every theme
   verbatim.tsx     Verbatim: the fallback for undesigned kinds, shows original text; NodeSpan
   layout.tsx       Line, Indent, Join, Lines: the layout vocabulary; LineOwner says which node a Line is for
   comments.tsx     attachComments(): where each comment of the file belongs, since the semantic AST has none
+  program.ts       createMemoryProgram(): a ts.Program over files given as text, libs supplied by the caller
+  semantic.tsx     semanticIdentifiers: every identifier tagged with its role from the checker, its type as a title
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
   testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
                    it out of the bundle
@@ -45,7 +51,7 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
   ruby/            TypeScript read with Ruby's eyes: `def ... end` for functions and methods, `class ... end`,
                    `if ... elsif ... else ... end`, guards as `return 0 if x`, no line-ending `;`
   ruby/test/       the theme's own tests, so the folder can be published as a unit
-src/main.tsx       demo page: pick a theme, render sample.ts
+src/main.tsx       demo page: bundle the lib files, build a program over sample.ts, pick a theme, render
 test/core/         tests for the core building blocks
 ```
 
@@ -160,6 +166,48 @@ A `//` comment attached to a node that `Join` renders inline, as in a
 multi-line parameter list, is shown inline too: nothing is lost, but the
 line layout for such lists is still to be designed.
 
+## Types
+
+The syntax tree cannot tell `Options` the interface from `options` the
+parameter, or say what `await readFile(path)` evaluates to. The type
+checker can, and it is the compiler's own: `ts.createProgram` over the file
+plus the compiler's `lib.*.d.ts`, then `program.getTypeChecker()`. Nothing
+is written to the tree a component sees; the binder keeps its symbols in
+fields of its own.
+
+`createMemoryProgram(files, libs)` in `program.ts` is the whole bridge: a
+`CompilerHost` that answers from a map of file texts and asks the caller
+for lib text by name. Where lib text comes from is the environment's
+business. Tests read it from the installed `typescript` package;
+`main.tsx` bundles the ES2022 chain with `import.meta.glob` (about half a
+megabyte next to the compiler's nine; DOM would add two more). Lib
+SourceFiles are parsed once per process, so a program per test costs a
+few milliseconds. `createCtx(program, fileName, resolve)` takes the file
+from the program, since the checker only knows the nodes it bound.
+
+Imports the program cannot see (`node:fs` in the sample) are diagnostics,
+and what they bring in is typed `any`. The checker answers everything else
+around them, so a component treats `any` as "unknown", never as a fact.
+
+`semanticIdentifiers` in `semantic.tsx` is the first reading effect built
+on it: a transform that claims every identifier and tags it with its role
+(`class`, `type`, `namespace`, `function`, `value`, `unresolved`, resolved
+through imports), with the type of a value as a hover title. Since the
+checker answers at the point of use, the title of `x` after `if (x ===
+null) return` is already narrowed. The transform never changes the text a
+reader sees, so a theme opts in by adding it to its list, as the Ruby theme
+does. A transform that *decides* by type, say rendering a call differently
+when it returns a `Promise`, has `ctx` in hand already: `(next) => (node,
+ctx) => ...`.
+
+Further effects the same ingredients make possible: inferred types shown
+inline where an annotation is missing; a link from each use to its
+declaration (`symbol.declarations`); the resolved signature of a call among
+its overloads; the file's semantic diagnostics placed on the statement
+that owns the line. For references across a project or quick info, the
+next layer up is `ts.createLanguageService`, which takes a similar in-memory
+host and exposes the same program.
+
 ## Scoping
 
 A component influences what is rendered below it in two ways, differing
@@ -183,3 +231,4 @@ pnpm dev        # view sample.ts through the current theme
 pnpm test       # vitest
 pnpm typecheck  # tsc
 ```
+

@@ -18,10 +18,13 @@ export type NodeComponent = ComponentType<NodeProps>
  * `resolve` is the single extension point: it decides which component
  * renders a given node. Transforms wrap it. `comments` is where each
  * comment of the file was attached, since the AST does not carry them.
+ * `checker` answers semantic questions (what does this name refer to, what
+ * is its type) that the syntax tree cannot; it reads, never writes.
  */
 export interface Ctx {
   sourceFile: ts.SourceFile
   comments: CommentMap
+  checker: ts.TypeChecker
   resolve: Resolve
 }
 

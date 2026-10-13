@@ -19,7 +19,7 @@ export function NodeSpan({
   node,
   children,
   ...attrs
-}: { node: ts.Node; children?: preact.ComponentChildren } & Record<`data-${string}`, string | undefined>) {
+}: { node: ts.Node; children?: preact.ComponentChildren; title?: string } & Record<`data-${string}`, string | undefined>) {
   return (
     <span data-kind={kindName(node.kind)} {...attrs}>
       {children}
