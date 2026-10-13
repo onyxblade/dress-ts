@@ -238,3 +238,6 @@ pnpm test       # vitest
 pnpm typecheck  # tsc
 ```
 
+The same page is published at https://onyxblade.github.io/dress-ts/ by
+`.github/workflows/pages.yml` on every push to `main` (typecheck, tests,
+build, deploy). `GITHUB_PAGES=1` makes the build use `/dress-ts/` as its base.
