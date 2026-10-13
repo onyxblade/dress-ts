@@ -2,15 +2,19 @@ import type ts from 'typescript'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   QuickInfo,
+  ImportInfo,
   Render,
   Verbatim,
   compose,
   createCtx,
+  importOf,
+  importsOf,
   nodeById,
   parseNodeId,
   quickInfoAt,
   semanticIdentifiers,
   type NodeRange,
+  type StaticImport,
   type Theme,
   type Transform,
 } from './core'
@@ -58,6 +62,7 @@ function writeChoice({ file, left, right }: Choice) {
 
 function Pane({ program, fileName, view, onChange }: { program: ts.Program; fileName: string; view: View; onChange: (v: View) => void }) {
   const ctx = createCtx(program, fileName, compose(() => Verbatim, view.transforms))
+  const imports = importsOf(ctx.sourceFile)
   return (
     <section class="pane">
       <header>
@@ -68,6 +73,11 @@ function Pane({ program, fileName, view, onChange }: { program: ts.Program; file
             </option>
           ))}
         </select>
+        {imports.length > 0 && (
+          <button type="button" class="imports-summary" data-imports="" aria-label={`Show ${imports.length} ${imports.length === 1 ? 'import' : 'imports'}`}>
+            {imports.length} {imports.length === 1 ? 'import' : 'imports'}
+          </button>
+        )}
       </header>
       <pre class="code" data-theme={view.name}>
         <Render node={ctx.sourceFile} ctx={ctx} />
@@ -138,23 +148,35 @@ function readingOf({ el, id }: Hovered, sourceFile: ts.SourceFile) {
   return node ? { note: mark.getAttribute('data-reading')!, written: written(node, sourceFile) } : undefined
 }
 
-type Card = { kind: 'info'; info: ts.QuickInfo } | { kind: 'reading'; note: string; written: string }
+type Card = { kind: 'info'; info?: ts.QuickInfo; imports: StaticImport[] } | { kind: 'reading'; note: string; written: string }
 
 /** The card for a pointer position: what it says, and where it hangs. */
-function cardAt(e: MouseEvent, service: ts.LanguageService, fileName: string): Shown | null {
+function cardAt(e: MouseEvent | FocusEvent, service: ts.LanguageService, fileName: string): Shown | null {
+  const program = service.getProgram()!
+  const sourceFile = program.getSourceFile(fileName)!
+  const summary = (e.target as Element | null)?.closest?.('[data-imports]')
+  if (summary) {
+    const r = boxOf(summary)
+    return { key: 'imports', card: { kind: 'info', imports: importsOf(sourceFile) }, at: { left: r.left, top: r.bottom }, pinned: false }
+  }
   const h = hovered(e.target)
   if (!h) return null
+  const node = nodeById(sourceFile, h.id)
+  const origin = node && importOf(node, program.getTypeChecker())
   const info = quickInfoAt(service, fileName, h.range)
-  if (info) {
+  if (info || origin) {
     const r = boxOf(h.el)
-    return { card: { kind: 'info', info }, at: { left: r.left, top: r.bottom }, pinned: false }
+    return { key: h.id, card: { kind: 'info', info, imports: origin ? [origin] : [] }, at: { left: r.left, top: r.bottom }, pinned: false }
   }
-  const reading = readingOf(h, service.getProgram()!.getSourceFile(fileName)!)
+  const reading = readingOf(h, sourceFile)
   // A reading mark has no box; anchor to the pointer.
-  return reading ? { card: { kind: 'reading', ...reading }, at: { left: e.clientX, top: e.clientY + 16 }, pinned: false } : null
+  const r = boxOf(h.el)
+  const at = 'clientX' in e ? { left: e.clientX, top: e.clientY + 16 } : { left: r.left, top: r.bottom }
+  return reading ? { key: h.id, card: { kind: 'reading', ...reading }, at, pinned: false } : null
 }
 
 interface Shown {
+  key: string
   card: Card
   at: { left: number; top: number }
   /** Held in place by a click: hovering leaves it alone, and it can be read and copied from. */
@@ -173,13 +195,18 @@ interface Shown {
 function Hover({ root, service, fileName }: { root: { current: HTMLElement | null }; service: ts.LanguageService; fileName: string }) {
   const [shown, setShown] = useState<Shown | null>(null)
   useEffect(() => {
+    setShown(null)
     const el = root.current
     if (!el) return
     const over = (e: MouseEvent) => setShown((prev) => (prev?.pinned ? prev : cardAt(e, service, fileName)))
     const leave = () => setShown((prev) => (prev?.pinned ? prev : null))
+    const focus = (e: FocusEvent) => {
+      if ((e.target as Element).closest('[data-imports]')) setShown(cardAt(e, service, fileName))
+    }
     const click = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.code')) return
-      setShown((prev) => (prev ? { ...prev, pinned: !prev.pinned } : prev))
+      if (!(e.target as Element).closest('.code, [data-imports]')) return
+      const next = cardAt(e, service, fileName)
+      setShown((prev) => next && !(prev?.pinned && prev.key === next.key) ? { ...next, pinned: true } : null)
     }
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShown(null)
@@ -187,11 +214,15 @@ function Hover({ root, service, fileName }: { root: { current: HTMLElement | nul
     el.addEventListener('mouseover', over)
     el.addEventListener('mouseleave', leave)
     el.addEventListener('click', click)
+    el.addEventListener('focusin', focus)
+    el.addEventListener('focusout', leave)
     document.addEventListener('keydown', key)
     return () => {
       el.removeEventListener('mouseover', over)
       el.removeEventListener('mouseleave', leave)
       el.removeEventListener('click', click)
+      el.removeEventListener('focusin', focus)
+      el.removeEventListener('focusout', leave)
       document.removeEventListener('keydown', key)
     }
   }, [root, service, fileName])
@@ -201,7 +232,10 @@ function Hover({ root, service, fileName }: { root: { current: HTMLElement | nul
   return (
     <div class={pinned ? 'hover pinned' : 'hover'} style={`left: ${left}px; top: ${at.top + 4}px`}>
       {card.kind === 'info' ? (
-        <QuickInfo info={card.info} />
+        <>
+          {card.info && <QuickInfo info={card.info} />}
+          {card.imports.length > 0 && <ImportInfo imports={card.imports} />}
+        </>
       ) : (
         <div class="reading-info">
           <p class="note">{card.note}</p>

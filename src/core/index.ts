@@ -7,4 +7,5 @@ export { CommentText, allComments, attachComments, type Comment, type Attached, 
 export { kindName } from './kind'
 export { createMemoryService, createMemoryProgram, defaultCompilerOptions, DEFAULT_LIB, type LibSource } from './program'
 export { quickInfoAt, QuickInfo } from './quickInfo'
+export { ImportInfo, importOf, importsOf, isStaticImport, type StaticImport } from './imports'
 export { SemanticIdentifier, semanticIdentifiers, roleOf, type Role } from './semantic'

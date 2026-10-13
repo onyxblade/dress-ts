@@ -51,6 +51,7 @@ src/core/          building blocks shared by every theme
                    caller; createMemoryProgram() is its program, for a caller that only renders
   semantic.tsx     semanticIdentifiers: every identifier tagged with its role from the checker
   quickInfo.tsx    quickInfoAt(): what an editor shows on hover, from the service; QuickInfo lays it out
+  imports.tsx      importOf(): a token's local import binding; importsOf() / ImportInfo: the file's imports and hover content
   kind.ts          kindName(): readable SyntaxKind names (avoids aliases like FirstStatement)
   testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
                    it out of the bundle
@@ -59,6 +60,8 @@ src/themes/<name>/ one folder per theme, self-contained, not meant to be merged 
                    `while x ... end`, `for x of xs ... end`, `case x when a, b ... end`, `begin ... rescue => e ... end`, `enum E ... end`, `Foo.new(a)`, `Set[string]`, `self` and `@x`, `constructor(@x: T)`, no `const`, no `private`, no line-ending `;`
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
+  typescript/      TypeScript layout with top-level imports moved to use-site hover and a header overview
+  typescript/README.md its layout rules, preserved syntax, fallback coverage, and tests
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
 src/samples/       the programs the demo page shows, each small and real: a directory walker, an LRU cache, an
                    arithmetic calculator, a state machine; a new file here is a new entry in the page's menu

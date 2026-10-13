@@ -38,4 +38,6 @@ Vitest runs in Node. Name tests `*.test.tsx` and place them with the relevant co
 
 ## Commit & Pull Request Guidelines
 
+After completing requested changes and passing the required checks, create a local commit.
+
 History uses descriptive subjects, often prefixed by area: `Ruby:`, `App:`, or `Samples:`. Describe the observable behavior changed. Keep PRs focused; explain the change, include validation results, link relevant issues, and provide before/after rendering examples or screenshots for visual changes.
