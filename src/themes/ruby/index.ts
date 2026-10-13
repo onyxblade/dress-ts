@@ -8,6 +8,7 @@ import { rubyInstanceVariable, rubyThis } from './this'
 import { rubyField } from './field'
 import { rubyModifier } from './modifiers'
 import { rubyVariables } from './variables'
+import { rubyTypeParameter } from './generics'
 import { rubyFallback } from './fallback'
 
 /**
@@ -16,5 +17,5 @@ import { rubyFallback } from './fallback'
  */
 export const ruby: Theme = {
   name: 'ruby',
-  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback],
+  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, semanticIdentifiers, rubyFallback],
 }

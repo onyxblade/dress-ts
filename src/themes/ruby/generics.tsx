@@ -1,5 +1,6 @@
 import ts from 'typescript'
-import { Join, type Ctx, type Edit } from '../../core'
+import { Join, Render, claim, type Ctx, type Edit, type NodeProps } from '../../core'
+import { Modifiers } from './modifiers'
 
 /**
  * Ruby's type syntax writes a generic in square brackets, `Array[String]`,
@@ -20,6 +21,42 @@ export function TypeList({ nodes, ctx }: { nodes: ts.NodeArray<ts.Node> | undefi
     )
   )
 }
+
+/**
+ * RBS writes a type parameter's upper bound after `<`, `[T < Numeric]`,
+ * the same `<` as a superclass, so `T extends object` reads as `T <
+ * object`. The modifiers (`in`, `out`, `const`), name, constraint and
+ * default are the node's; the `<` and `=` are this component's. Only a
+ * parameter with a constraint is claimed, since a bare `T` reads as
+ * itself. The `U extends string` of an `infer U extends string` is a
+ * type parameter to the parser too, but it narrows a match rather than
+ * bounding a parameter, so it stays as written.
+ */
+export function RubyTypeParameter({ node, ctx }: NodeProps<ts.TypeParameterDeclaration>) {
+  return (
+    <>
+      <Modifiers nodes={node.modifiers} ctx={ctx} />
+      <Render node={node.name} ctx={ctx} />
+      {node.constraint && (
+        <>
+          {' < '}
+          <Render node={node.constraint} ctx={ctx} />
+        </>
+      )}
+      {node.default && (
+        <>
+          {' = '}
+          <Render node={node.default} ctx={ctx} />
+        </>
+      )}
+    </>
+  )
+}
+
+const isBounded = (n: ts.Node): n is ts.TypeParameterDeclaration =>
+  ts.isTypeParameterDeclaration(n) && n.constraint !== undefined && !ts.isInferTypeNode(n.parent)
+
+export const rubyTypeParameter = claim(isBounded, RubyTypeParameter, '`T extends U` reads as `T < U`')
 
 /** Where the first token at or after `pos` starts, past whitespace and comments. */
 function tokenAfter(text: string, pos: number): number {

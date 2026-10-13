@@ -5,6 +5,7 @@ import { rubyFunction } from '../function'
 import { rubyClass } from '../class'
 import { rubyNew } from '../new'
 import { rubySourceFile } from '../sourceFile'
+import { rubyTypeParameter } from '../generics'
 
 const show = (text: string) => renderText(text, [rubySourceFile, rubyFunction, rubyClass, rubyNew, rubyFallback])
 
@@ -53,5 +54,34 @@ describe('squareTypeLists', () => {
   it('leaves other angle brackets alone', () => {
     expect(show('const b = a < b && c > d')).toBe('const b = a < b && c > d\n')
     expect(show('const n = x as unknown as T')).toBe('const n = x as unknown as T\n')
+  })
+})
+
+describe('rubyTypeParameter', () => {
+  const show = (text: string) => renderText(text, [rubyTypeParameter, rubyFallback])
+
+  it('writes the constraint after <, keeps the default', () => {
+    expect(show('type A<T extends object = {}> = T')).toBe('type A[T < object = {}] = T')
+  })
+
+  it('keeps the modifiers and a keyof constraint', () => {
+    expect(show('const f = <const K extends keyof O>(k: K) => k')).toBe('const f = [const K < keyof O](k: K) => k')
+  })
+
+  it('leaves a bare parameter and an infer alone', () => {
+    expect(show('type A<T> = T extends infer U extends string ? U : never')).toBe(
+      'type A[T] = T extends infer U extends string ? U : never',
+    )
+  })
+
+  it('keeps the comments around the constraint, both after the name they follow', () => {
+    expect(show('type A<T /* a */ extends /* b */ object> = T')).toBe('type A[T /* a */ /* b */ < object] = T')
+    expect(lostComments('type A<T /* a */ extends /* b */ object> = T', [rubyTypeParameter, rubyFallback])).toEqual([])
+  })
+
+  it('marks the parameter', () => {
+    expect(renderHtml('type A<T extends object> = T', [rubyTypeParameter, rubyFallback])).toContain(
+      'data-reading="`T extends U` reads as `T &lt; U`" data-node="TypeParameter@7-23"',
+    )
   })
 })

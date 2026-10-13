@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -34,6 +34,7 @@ The order is outermost first. The designed components claim their kinds;
 | `this.tsx` | `this` | `self` |
 | `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
 | `generics.tsx` | `Set<string>`, `type Pair<T>`, `f<T>(x)` | `Set[string]`, `type Pair[T]`, `f[T](x)` |
+| `generics.tsx` | `T extends object = {}` | `T < object = {}` |
 | `semicolon.tsx` | `f();` at the end of a line, `a: T,` in an interface | `f()`, `a: T` |
 
 Every reading is marked: `claim`'s note, or an edit's, is what the page
@@ -62,7 +63,8 @@ claims the `extends` heritage clause and writes `< ` before its types,
 and an interface's `extends B, C` reads as `< B, C` the same way. An
 `implements` clause has no Ruby form and stays as written. A type
 parameter's constraint, `A<T extends B>`, is not a heritage clause and
-keeps its `extends`.
+keeps its `extends` in that test; through the whole theme it reads as `<`
+too, by `rubyTypeParameter` (see Generics).
 
 ### If
 
@@ -152,6 +154,15 @@ writes the brackets: `TypeList` is what `RubyFunction`, `RubyClass` and
 `RubyNew` put where the source had `<...>`. An undesigned node shown
 verbatim gets them from the fallback rule `squareTypeLists` instead, see
 below.
+
+RBS writes a parameter's upper bound after `<`, `[T < Numeric]`, the same
+`<` as a superclass, so `rubyTypeParameter` reads `T extends object = {}`
+as `T < object = {}`, modifiers (`in`, `out`, `const`) and default kept.
+A bare `T` is not claimed, since it reads as itself. The `U extends
+string` of an `infer U extends string` is a type parameter to the parser
+too, but it narrows a match rather than bounding a parameter, so it stays
+as written; so does the `extends` of a conditional type, which is no
+parameter at all.
 
 ## The fallback
 
