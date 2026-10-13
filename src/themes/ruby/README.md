@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -32,6 +32,7 @@ The order is outermost first. The designed components claim their kinds;
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
 | `variables.tsx` | `const x = 1`, `let x = 1`, `for (const x of xs)` | `x = 1`, `for (x of xs)` |
 | `field.tsx` | `private readonly x = v` | `@x = v` |
+| `field.tsx` | `constructor(private x: T)` | `constructor(@x: T)` |
 | `this.tsx` | `this.x` on a field | `@x` |
 | `this.tsx` | `this` | `self` |
 | `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
@@ -131,6 +132,14 @@ keyword it was is in the node as written, on hover.
 = new Set()` as `@seen = Set.new()`, the modifiers left out as everywhere
 (see Modifiers) and the `@` saying the variable is the object's own.
 
+A parameter property declares a field in the constructor's signature,
+and the modifier is what makes it one, so there the modifier is not
+noise but the `@`: `constructor(private readonly tokens: Token[]) {}`
+reads as `def constructor(@tokens: Token[])`, the way Crystal writes it.
+Without the `@` the constructor would read as empty and the `@tokens`
+later in the class would come from nowhere. The `def` stays, being what
+`new` takes; an `override` stays in front, as a field's `static` would.
+
 Whether `this.x` is a field is the checker's answer, not the syntax's:
 `rubyInstanceVariable`'s guard asks `ctx.checker` for the symbol of `x`
 and claims the node only for a `Property`, a declared field or a
@@ -156,10 +165,12 @@ goes before the `@`.
 Ruby says visibility apart from the method, `private` on a line of its
 own, and has no `readonly`, so `public`, `private`, `protected` and
 `readonly` are noise: `private readonly x = v` reads as `@x = v`,
-`public m()` as `def m()`, `constructor(public readonly o: T)` as
-`constructor(o: T)`, an interface's `readonly root: string` as `root:
-string`. Which modifiers a declaration had is in the node as written, on
-hover. `static`, `abstract`, `override`, `async`, `export` and the rest
+`public m()` as `def m()`, an interface's `readonly root: string` as
+`root: string`. Which modifiers a declaration had is in the node as
+written, on hover. The one place the modifier says something is a
+parameter property, where it reads as `@` (see Fields and the receiver);
+with `rubyModifier` alone, `constructor(public readonly o: T)` reads as
+`constructor(o: T)`. `static`, `abstract`, `override`, `async`, `export` and the rest
 say something a reader wants in the text and stay; so does the `readonly`
 of a type, `readonly string[]` or `{ readonly [K in T]: V }`, which is an
 operator on the type, not a modifier of a declaration: `rubyModifier`

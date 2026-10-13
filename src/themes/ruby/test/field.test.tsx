@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lostComments, renderHtml, renderText } from '../../../core/testing'
-import { rubyField } from '../field'
+import { rubyField, rubyParameterProperty } from '../field'
 import { rubyFallback } from '../fallback'
 
 const show = (text: string) => renderText(text, [rubyField, rubyFallback])
@@ -51,6 +51,35 @@ describe('rubyField', () => {
   it('marks the reading', () => {
     expect(renderHtml(cls('private x = 1'), [rubyField, rubyFallback])).toContain(
       'data-reading="`private readonly x = v` reads as `@x = v`" data-node="PropertyDeclaration@9-25">@<span',
+    )
+  })
+})
+
+describe('rubyParameterProperty', () => {
+  const show = (text: string) => renderText(text, [rubyParameterProperty, rubyFallback])
+  const ctor = (params: string) => `class A {\n  constructor(${params}) {}\n}`
+
+  it('reads a parameter property as a field in the signature', () => {
+    expect(show(ctor('private readonly tokens: Token[]'))).toBe(ctor('@tokens: Token[]'))
+    expect(show(ctor('public state: State = initial'))).toBe(ctor('@state: State = initial'))
+    expect(show(ctor('readonly x?: number'))).toBe(ctor('@x?: number'))
+    expect(show(ctor('protected a: number, private b = 1'))).toBe(ctor('@a: number, @b = 1'))
+  })
+
+  it('keeps an override, and leaves a plain parameter alone', () => {
+    expect(show(ctor('override x: number'))).toBe(ctor('override @x: number'))
+    expect(show(ctor('public override x: number'))).toBe(ctor('override @x: number'))
+    expect(show(ctor('x: number, private y: number'))).toBe(ctor('x: number, @y: number'))
+  })
+
+  it('keeps a comment on a modifier', () => {
+    expect(show(ctor('private /* c */ readonly x: number'))).toBe(ctor('/* c */ @x: number'))
+    expect(lostComments(ctor('private // c\n  x = 1'), [rubyParameterProperty, rubyFallback])).toEqual([])
+  })
+
+  it('marks the reading', () => {
+    expect(renderHtml(ctor('private x: T'), [rubyParameterProperty, rubyFallback])).toContain(
+      'data-reading="`constructor(private x: T)` reads as `constructor(@x: T)`, a field declared in the signature" data-node="Parameter@24-36">@<span',
     )
   })
 })
