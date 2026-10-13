@@ -24,6 +24,11 @@ describe('closingSemicolon', () => {
     expect(show('interface A {\n  a: string;\n  b: number; // n\n}')).toBe('interface A {\n  a: string\n  b: number // n\n}\n')
   })
 
+  it('drops a comma that ends a type member\'s line, keeps one that separates', () => {
+    expect(show('interface A {\n  a: string,\n  b: number,\n}')).toBe('interface A {\n  a: string\n  b: number\n}\n')
+    expect(show('type T = { a: string, b: number }')).toBe('type T = { a: string, b: number }\n')
+  })
+
   it('keeps separators inside a one-line type literal', () => {
     expect(show('type T = { a: string; b: number };')).toBe('type T = { a: string; b: number }\n')
   })

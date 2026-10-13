@@ -55,7 +55,7 @@ src/core/          building blocks shared by every theme
   testing.tsx      renderText() / renderHtml() / lostComments() for tests; not re-exported from index to keep
                    it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
-  ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`, `return 0 if x`,
+  ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class ... end`, `interface ... end`, `return 0 if x`,
                    `Foo.new(a)`, `Set[string]`, `self` and `@x`, no `const`, no `private`, no line-ending `;`
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit

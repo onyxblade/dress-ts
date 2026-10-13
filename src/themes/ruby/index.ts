@@ -1,7 +1,7 @@
 import { semanticIdentifiers, type Theme } from '../../core'
 import { rubySourceFile } from './sourceFile'
 import { rubyFunction } from './function'
-import { rubyClass } from './class'
+import { rubyClass, rubyInterface } from './class'
 import { rubyIf } from './if'
 import { rubyNew } from './new'
 import { rubyInstanceVariable, rubyThis } from './this'
@@ -16,5 +16,5 @@ import { rubyFallback } from './fallback'
  */
 export const ruby: Theme = {
   name: 'ruby',
-  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback],
+  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback],
 }

@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -23,6 +23,7 @@ The order is outermost first. The designed components claim their kinds;
 | `sourceFile.tsx` | the file | its statements one per line, comments and blank-line groups kept |
 | `function.tsx` | `function f() { ... }`, a function expression, a method `m() { ... }` | `def f() ... end` |
 | `class.tsx` | `class A<T> extends B { ... }` | `class A[T] extends B ... end` |
+| `class.tsx` | `interface A<T> extends B { ... }` | `interface A[T] extends B ... end` |
 | `if.tsx` | `if (x) { ... } else if (y) { ... } else { ... }` | `if x ... elsif y ... else ... end` |
 | `if.tsx` | `if (x) return 0` | `return 0 if x` |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
@@ -32,7 +33,7 @@ The order is outermost first. The designed components claim their kinds;
 | `this.tsx` | `this` | `self` |
 | `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
 | `generics.tsx` | `Set<string>`, `type Pair<T>`, `f<T>(x)` | `Set[string]`, `type Pair[T]`, `f[T](x)` |
-| `semicolon.tsx` | `f();` at the end of a line | `f()` |
+| `semicolon.tsx` | `f();` at the end of a line, `a: T,` in an interface | `f()`, `a: T` |
 
 Every reading is marked: `claim`'s note, or an edit's, is what the page
 shows when the pointer is on the theme's own words.
@@ -46,7 +47,11 @@ methods, since TypeScript keeps the same fields on all three. The header
 is inline, not a `Line`, so the component works as a statement, where the
 parent's `Lines` gives it a line, and as an expression, where it
 continues the line it appears on. `RubyClass` is the same shape with
-`class`.
+`class`, and with `interface`: an interface declaration carries the same
+fields a class does, modifiers, name, type parameters, heritage clauses,
+members, so the one component covers both and two claims name them. The
+members are the node's, each on a line, so a member's closing `;` or `,`
+goes the way a statement's does (see The fallback).
 
 ### If
 
@@ -147,7 +152,8 @@ several at once (`type Pair<T> = [T, T];` loses its `;` and respells its
 `<T>`, `readonly x: T;` loses two words):
 
 - `closingSemicolon` drops a `;` that closes the line, since Ruby ends a
-  statement with the line. Whether it closes a line is a layout question,
+  statement with the line, and likewise the `,` an interface or type
+  literal member may end in instead. Whether it closes a line is a layout question,
   answered by layout: the node owns a `Line` (the `LineOwner` context set
   by `Lines`), or, inside a verbatim region, nothing but a trailing
   comment follows it in the source. The `;` between the members of a
