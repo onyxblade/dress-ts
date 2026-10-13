@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -34,7 +34,7 @@ The order is outermost first. The designed components claim their kinds;
 | `field.tsx` | `private readonly x = v` | `@x = v` |
 | `field.tsx` | `constructor(private x: T)` | `constructor(@x: T)` |
 | `this.tsx` | `this.x` on a field | `@x` |
-| `this.tsx` | `this` | `self` |
+| `this.tsx` | `this`, and the `this` type `f(): this` | `self`, `f(): self` |
 | `modifiers.tsx` | `private readonly x`, `public m()`, `readonly root: string` | `x`, `def m()`, `root: string` |
 | `generics.tsx` | `Set<string>`, `type Pair<T>`, `f<T>(x)` | `Set[string]`, `type Pair[T]`, `f[T](x)` |
 | `generics.tsx` | `T extends object = {}` | `T < object = {}` |
@@ -127,7 +127,10 @@ keyword it was is in the node as written, on hover.
 
 ### Fields and the receiver
 
-`this` reads as `self`. A field of the receiver is an instance variable:
+`this` reads as `self`, and so does the `this` type of `set(k, v): this`,
+since RBS names the receiver's type `self` as well, `def set: (K, V) ->
+self`; the parser gives the type its own kind, so `rubyThisType` is a
+second claim on the same word. A field of the receiver is an instance variable:
 `this.seen` reads as `@seen`, and its declaration `private readonly seen
 = new Set()` as `@seen = Set.new()`, the modifiers left out as everywhere
 (see Modifiers) and the `@` saying the variable is the object's own.

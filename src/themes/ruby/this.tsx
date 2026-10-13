@@ -3,12 +3,19 @@ import { CommentText, Render, claim, type NodeProps } from '../../core'
 
 const isThis = (node: ts.Node): node is ts.ThisExpression => node.kind === ts.SyntaxKind.ThisKeyword
 
-/** The receiver's own name: `this` reads as `self`. */
-export function RubyThis(_: NodeProps<ts.ThisExpression>) {
+/**
+ * The receiver's own name: `this` reads as `self`. So does the `this`
+ * type, `set(k, v): this`, since RBS names the receiver's type `self`
+ * too, `def set: (K, V) -> self`; the parser gives it a kind of its own,
+ * so it is a second claim on the same word. A parameter named `this`,
+ * `function f(this: A)`, is an identifier and stays as written.
+ */
+export function RubyThis(_: NodeProps<ts.ThisExpression | ts.ThisTypeNode>) {
   return <>self</>
 }
 
 export const rubyThis = claim(isThis, RubyThis, '`this` reads as `self`')
+export const rubyThisType = claim(ts.isThisTypeNode, RubyThis, 'the `this` type reads as `self`, the type RBS gives the receiver')
 
 /**
  * Whether `this.name` reaches a field of the object, as the checker sees

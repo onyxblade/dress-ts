@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { lostComments, renderHtml, renderText } from '../../../core/testing'
-import { rubyInstanceVariable, rubyThis } from '../this'
+import { rubyInstanceVariable, rubyThis, rubyThisType } from '../this'
 import { rubyModifier } from '../modifiers'
 import { rubyFallback } from '../fallback'
 
-const show = (text: string) => renderText(text, [rubyInstanceVariable, rubyThis, rubyModifier, rubyFallback])
+const show = (text: string) => renderText(text, [rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyFallback])
 
 const cls = (body: string) => `class A {\n  x = 1\n  get size() { return 0 }\n  m() {\n    ${body}\n  }\n}`
 
@@ -13,8 +13,15 @@ describe('rubyThis', () => {
     expect(show(cls('return this'))).toBe(cls('return self'))
   })
 
-  it('leaves the this type and a parameter named this alone', () => {
-    expect(show('class A {\n  f(): this { return this }\n}')).toBe('class A {\n  f(): this { return self }\n}')
+  it('reads the this type as self too, the type RBS gives the receiver', () => {
+    expect(show('class A {\n  f(): this { return this }\n}')).toBe('class A {\n  f(): self { return self }\n}')
+    expect(show('type T = this | null')).toBe('type T = self | null')
+    expect(renderHtml('class A {\n  f(): this {}\n}', [rubyThisType, rubyFallback])).toContain(
+      'data-reading="the `this` type reads as `self`, the type RBS gives the receiver" data-node="ThisType@16-21">self</span>',
+    )
+  })
+
+  it('leaves a parameter named this alone', () => {
     expect(show('function f(this: A) { return this }')).toBe('function f(this: A) { return self }')
   })
 })
