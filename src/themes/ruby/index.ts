@@ -7,6 +7,7 @@ import { rubyIf } from './if'
 import { rubyDoWhile, rubyFor, rubyForEach, rubyWhile } from './loop'
 import { rubyEnum } from './enum'
 import { rubyTry } from './try'
+import { rubySwitch } from './switch'
 import { rubyNew } from './new'
 import { rubyInstanceVariable, rubyThis, rubyThisType } from './this'
 import { rubyField, rubyParameterProperty } from './field'
@@ -22,5 +23,5 @@ import { rubyFallback } from './fallback'
  */
 export const ruby: Theme = {
   name: 'ruby',
-  transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubyTry, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback],
+  transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubySwitch, rubyTry, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback],
 }

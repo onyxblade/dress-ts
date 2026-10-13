@@ -74,7 +74,14 @@ const siblings = (node: ts.Node) => childNodes(node).filter((c) => c.kind !== ts
  * node. The component rendering the enclosing node is then responsible
  * for it: `Verbatim` through its gap text, a designed component through
  * `Render`, `Lines` and `Join`, which read this map.
+ *
+ * One exception: a `case` or `default` clause ends with its last
+ * statement, not with a token of its own, so a comment after it on that
+ * line, `return x // why`, trails the statement, whose line it is on,
+ * rather than the clause.
  */
+const endsWithStatement = (node: ts.Node): node is ts.CaseOrDefaultClause => ts.isCaseOrDefaultClause(node) && node.statements.length > 0
+
 export function attachComments(sourceFile: ts.SourceFile): CommentMap {
   const text = sourceFile.text
   const map = new Map<ts.Node, Attached>()
@@ -105,6 +112,7 @@ export function attachComments(sourceFile: ts.SourceFile): CommentMap {
       if (!inner) break
       enclosing = inner
     }
+    while (preceding && endsWithStatement(preceding)) preceding = preceding.statements[preceding.statements.length - 1]
     const sameLine = preceding !== undefined && !/[\r\n]/.test(text.slice(preceding.end, c.pos))
     if (preceding && sameLine) slot(preceding).trailing.push(c)
     else if (following) slot(following).leading.push(c)

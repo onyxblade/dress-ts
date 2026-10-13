@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubyTry, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyWhile, rubyDoWhile, rubyForEach, rubyFor, rubySwitch, rubyTry, rubyEnum, rubyNew, rubyVariables, rubyField, rubyParameterProperty, rubyInstanceVariable, rubyThis, rubyThisType, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -33,6 +33,9 @@ The order is outermost first. The designed components claim their kinds;
 | `loop.tsx` | `do { ... } while (x)` | `begin ... end while x` |
 | `loop.tsx` | `for (const x of xs) { ... }`, `for (const k in o) { ... }` | `for x of xs ... end`, `for k in o ... end` |
 | `loop.tsx` | `for (;;) { ... }`, `for (let i = 0; i < n; i++) { ... }` | `loop do ... end`, `for (i = 0; i < n; i++) ... end` |
+| `switch.tsx` | `switch (x) { case a: case b: ... break; default: ... }` | `case x when a, b ... else ... end` |
+| `switch.tsx` | a case body that runs on into the next | the body, then `fallthrough` |
+| `switch.tsx` | a `break` inside a case body | `break`, marked as one Ruby would misread |
 | `try.tsx` | `try { ... } catch (e) { ... } finally { ... }` | `begin ... rescue => e ... ensure ... end` |
 | `enum.tsx` | `enum E { A = 1, B }` | `enum E ... end`, a member per line |
 | `new.tsx` | `new Foo<T>(a)` | `Foo[T].new(a)` |
@@ -96,7 +99,9 @@ the reader would have misread. An empty body gets no such line,
 Ruby's `nil` and this `undefined` saying the same nothing; neither does a
 body whose last statement leaves on every path, a `throw`, a block
 ending in a jump, an `if` whose both branches do, a `try` whose
-`finally` does or whose block and `catch` both do. That much the syntax
+`finally` does or whose block and `catch` both do, a `switch` with a
+`default` that no `break` leaves early and whose last clause does. That
+much the syntax
 says; the checker's flow analysis is not public, so an `if` chain that
 returns from every branch without an `else` gets the line though the end
 is unreachable.
@@ -135,6 +140,39 @@ things, and Ruby's `in` would hide which one it was. The three-clause
 `for (i = 0; i < n; i++)`, and only the braces give way to the Indent and
 `end`; the one Ruby does have is the clauseless `for (;;)`, which reads
 as `loop do`.
+
+### Switch
+
+`switch (x) { ... }` reads as `case x ... end`, a `when` per run of
+labels at the same depth as the `case`, as Ruby writes them, `default:`
+as `else`. Three things separate a `switch` from a `case`, and the
+reading answers each:
+
+- A run of labels sharing a body, `case 'a': case 'b': body`, is one
+  `when 'a', 'b'`. Ruby's empty `when` does nothing rather than run on
+  into the next, so the labels have to be joined; `RubySwitch` groups
+  the clauses and hands each run to `Lines` as one entry (see the core
+  README on groups), with a claim scoped to the switch that renders the
+  run from its first clause. A run with a `default` in it reads as
+  `else`, since `default` takes whatever the labels beside it would.
+- A `break` closing a body is what `when` does without, and is not
+  written; its comments are given lines at the end of the body. A
+  `break` that leaves the switch from inside the body, `if (x) break`,
+  stays, since Ruby's `break` in a `case` would leave the loop around it
+  instead, and is marked (`.caution` in the stylesheet, red and dotted)
+  as a word the reading cannot take at face value; a `break` of a loop
+  or a switch nested in the body is that one's and stays as it is.
+- A body that runs on into the next clause, ending in no jump, gets a
+  `fallthrough` line of the theme's own at its end, tinted and marked
+  like a body's `undefined`: Ruby's `when` never does, and a reader
+  would take the `else` for unreached. The body that is one block,
+  `case 1: { ... }`, is read as its statements.
+
+A `switch` as the last statement of a body leaves on every path when it
+has a `default`, its last clause leaves and no `break` of its own leaves
+early, so no `undefined` follows it then; one without a `default` gets
+the line, since the syntax says nothing about the cases being all there
+are.
 
 ### Try
 

@@ -85,26 +85,43 @@ type Item =
  * `within` is the node the list is the body of (a block, a class, the
  * file). Comments after its last child dangle from it, in the AST's terms
  * from nothing, and are given lines at the end so they are not lost.
+ *
+ * An entry may be a group of nodes laid out as one line: a run of `case`
+ * labels sharing a body, `case 'a': case 'b': ...`. The first is the one
+ * dispatched, and its component must know the group; the line carries
+ * its identity. The leading comments of every member are the line's,
+ * those on the first member's line inline and the rest on lines of their
+ * own above it. The comments trailing the members are the component's
+ * to place, since it lays the run out as it sees fit, a header line and
+ * a body of lines of its own, and only it knows which line each is on.
+ * A gap is a blank line in the source between two lines, so the lines
+ * the later members took do not count as one.
  */
-export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; within?: ts.Node; ctx: Ctx }) {
+export type LineEntry = ts.Node | readonly ts.Node[]
+
+export function Lines({ nodes, within, ctx }: { nodes: readonly LineEntry[]; within?: ts.Node; ctx: Ctx }) {
   const { sourceFile, comments } = ctx
   const lineOf = (pos: number) => sourceFile.getLineAndCharacterOfPosition(pos).line
   const ownLine = (c: Comment): Item => ({ kind: 'comment', comment: c, start: c.pos, end: c.end })
 
   const items: Item[] = []
-  for (const node of nodes) {
-    const { leading, trailing } = comments.of(node)
+  for (const entry of nodes) {
+    const group: readonly ts.Node[] = Array.isArray(entry) ? entry : [entry as ts.Node]
+    const node = group[0]
+    const last = group[group.length - 1]
+    const leading = group.flatMap((n) => comments.of(n).leading)
+    const trailing = group.length === 1 ? comments.of(node).trailing : []
     const start = node.getStart(sourceFile)
     const line = lineOf(start)
     const inline = leading.filter((c) => lineOf(c.end) === line)
-    items.push(...leading.filter((c) => lineOf(c.end) < line).map(ownLine))
+    items.push(...leading.filter((c) => lineOf(c.end) !== line).map(ownLine))
     items.push({
       kind: 'node',
       node,
       inline,
       trailing,
       start: inline[0]?.pos ?? start,
-      end: trailing[trailing.length - 1]?.end ?? node.end,
+      end: trailing[trailing.length - 1]?.end ?? last.end,
     })
   }
   if (within) items.push(...comments.of(within).dangling.map(ownLine))
@@ -113,7 +130,7 @@ export function Lines({ nodes, within, ctx }: { nodes: readonly ts.Node[]; withi
     <>
       {items.map((item, i) => {
         const prev = items[i - 1]
-        const gap = prev !== undefined && lineOf(item.start) - lineOf(prev.end) > 1 ? '' : undefined
+        const gap = prev !== undefined && /\n[ \t]*\r?\n/.test(sourceFile.text.slice(prev.end, item.start)) ? '' : undefined
         if (item.kind === 'comment') {
           return (
             <Line key={`c${item.comment.pos}`} data-gap={gap}>

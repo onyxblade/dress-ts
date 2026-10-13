@@ -84,6 +84,11 @@ body {
   display: contents;
   color: #a8559a;
 }
+/* A word of the source the reading cannot take at face value, a `break` inside a `case` (see ruby/switch.tsx). */
+.caution {
+  color: #b33;
+  text-decoration: underline dotted;
+}
 /* A word the fallback wrote in place of the source's, `[` for `<` (see core Verbatim edits): tinted like the theme's own. */
 .edit {
   color: #a8559a;

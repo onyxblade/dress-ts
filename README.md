@@ -56,7 +56,7 @@ src/core/          building blocks shared by every theme
                    it out of the bundle
 src/themes/<name>/ one folder per theme, self-contained, not meant to be merged with other themes
   ruby/            TypeScript read with Ruby's eyes: `def ... end`, `class A < B ... end`, `interface ... end`, `[T < object]`, `a == b`, `def constructor`, `return 0 if x`, `x` for a last `return x`,
-                   `while x ... end`, `for x of xs ... end`, `begin ... rescue => e ... end`, `enum E ... end`, `Foo.new(a)`, `Set[string]`, `self` and `@x`, `constructor(@x: T)`, no `const`, no `private`, no line-ending `;`
+                   `while x ... end`, `for x of xs ... end`, `case x when a, b ... end`, `begin ... rescue => e ... end`, `enum E ... end`, `Foo.new(a)`, `Set[string]`, `self` and `@x`, `constructor(@x: T)`, no `const`, no `private`, no line-ending `;`
   ruby/README.md   the theme's readings and the decision behind each; this file covers only the core
   ruby/test/       the theme's own tests, so the folder can be published as a unit
 src/themes/index.ts the list of themes the demo page offers; a new theme folder adds itself here
@@ -183,7 +183,10 @@ Every comment is placed among the semantic children of the innermost node
 enclosing it: on the same line after a child it *trails* that child, before
 a child it *leads* that child, and after the last child (or in a node with
 no children, `function f() { // todo }`) it *dangles* from the enclosing
-node. The result is `ctx.comments`.
+node. One exception: a `case` or `default` clause ends with its last
+statement, not with a token of its own, so a comment after it on that
+line, `return x // why`, trails the statement rather than the clause.
+The result is `ctx.comments`.
 
 The rule that follows is: the component rendering the enclosing node emits
 the comments attached to its children.
@@ -199,7 +202,12 @@ the comments attached to its children.
   the list is the body of (`within`), the sequence ends with that node's
   dangling comments. A blank line in the source between any two of these
   lines is kept as a gap, so the grouping an author did with blank lines
-  survives, between comments as much as between statements.
+  survives, between comments as much as between statements. An entry may
+  be a group of nodes laid out as one line, a run of `case` labels
+  sharing a body: the first is dispatched, and its component must know
+  the group; the leading comments of every member are the line's, the
+  trailing ones the component's to place, and the lines the later
+  members took in the source are not a gap.
 
 What a designed component can still get wrong is skipping a node (rendering
 its grandchildren directly, so nobody renders the comments attached to the

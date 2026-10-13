@@ -34,24 +34,56 @@ export function RubyLastReturn({ node, ctx }: NodeProps<ts.ReturnStatement & { e
 
 export const rubyLastReturn = claim(isLastReturn, RubyLastReturn, '`return x` as the last line reads as `x`, the value of the line')
 
+/** A `return` or a `throw`: the statements that leave the function. */
+const exitsFunction = (s: ts.Statement): boolean => ts.isReturnStatement(s) || ts.isThrowStatement(s)
+
 /**
- * Whether a statement leaves the function on every path through it: a
- * jump, a block ending in one, an `if` whose both branches do, a `try`
- * whose `finally` does or whose block and `catch` both do. The syntax
- * alone says this much; the checker's flow analysis is not public.
+ * Whether a statement leaves, on every path through it, the construct
+ * whose exits `exits` names: the function, for a `return` or a `throw`;
+ * a `switch` clause, for those and a `break` or `continue` too (see
+ * switch.tsx). An exit, a block ending in one, an `if` whose both
+ * branches do, a `try` whose `finally` does or whose block and `catch`
+ * both do, a `switch` with a `default` whose last clause does and that
+ * no `break` of its own leaves early. The syntax alone says this much;
+ * the checker's flow analysis is not public.
  */
-function leaves(s: ts.Statement): boolean {
-  if (ts.isReturnStatement(s) || ts.isThrowStatement(s)) return true
+export function leaves(s: ts.Statement, exits: (s: ts.Statement) => boolean = exitsFunction): boolean {
+  if (exits(s)) return true
   if (ts.isBlock(s)) {
     const last = lastOf(s)
-    return last !== undefined && leaves(last)
+    return last !== undefined && leaves(last, exits)
   }
-  if (ts.isIfStatement(s)) return s.elseStatement !== undefined && leaves(s.thenStatement) && leaves(s.elseStatement)
+  if (ts.isIfStatement(s)) return s.elseStatement !== undefined && leaves(s.thenStatement, exits) && leaves(s.elseStatement, exits)
   if (ts.isTryStatement(s)) {
-    if (s.finallyBlock && leaves(s.finallyBlock)) return true
-    return leaves(s.tryBlock) && (s.catchClause === undefined || leaves(s.catchClause.block))
+    if (s.finallyBlock && leaves(s.finallyBlock, exits)) return true
+    return leaves(s.tryBlock, exits) && (s.catchClause === undefined || leaves(s.catchClause.block, exits))
+  }
+  if (ts.isSwitchStatement(s)) {
+    const clauses = s.caseBlock.clauses
+    const last = clauses[clauses.length - 1]?.statements.at(-1)
+    if (!clauses.some(ts.isDefaultClause) || last === undefined) return false
+    return breaksOf(s).length === 0 && leaves(last, exits)
   }
   return false
+}
+
+/**
+ * The `break` statements that leave this switch: the unlabeled ones in
+ * its clauses outside any loop, switch or function nested in them, which
+ * a `break` would leave instead.
+ */
+export function breaksOf(node: ts.SwitchStatement): ts.BreakStatement[] {
+  const found: ts.BreakStatement[] = []
+  const visit = (n: ts.Node) => {
+    if (ts.isBreakStatement(n)) {
+      if (!n.label) found.push(n)
+      return
+    }
+    if (ts.isIterationStatement(n, false) || ts.isSwitchStatement(n) || ts.isFunctionLike(n) || ts.isClassLike(n)) return
+    n.forEachChild(visit)
+  }
+  node.caseBlock.clauses.forEach((c) => c.statements.forEach(visit))
+  return found
 }
 
 const NOTE = 'a last line that is not a `return` gets `undefined` after it: the function returns that, where Ruby would return the line'
