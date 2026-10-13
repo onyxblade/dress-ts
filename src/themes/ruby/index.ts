@@ -1,6 +1,7 @@
 import { semanticIdentifiers, type Theme } from '../../core'
 import { rubySourceFile } from './sourceFile'
 import { rubyFunction } from './function'
+import { rubyLastReturn } from './return'
 import { rubyClass, rubyExtends, rubyInterface } from './class'
 import { rubyIf } from './if'
 import { rubyNew } from './new'
@@ -18,5 +19,5 @@ import { rubyFallback } from './fallback'
  */
 export const ruby: Theme = {
   name: 'ruby',
-  transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback],
+  transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback],
 }

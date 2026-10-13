@@ -9,7 +9,7 @@ lists the readings and the decisions behind each.
 
 ```ts
 // index.ts
-transforms: [rubySourceFile, rubyFunction, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
+transforms: [rubySourceFile, rubyFunction, rubyLastReturn, rubyClass, rubyInterface, rubyExtends, rubyIf, rubyNew, rubyVariables, rubyField, rubyInstanceVariable, rubyThis, rubyModifier, rubyTypeParameter, rubyEquality, semanticIdentifiers, rubyFallback]
 ```
 
 The order is outermost first. The designed components claim their kinds;
@@ -22,6 +22,8 @@ The order is outermost first. The designed components claim their kinds;
 | --- | --- | --- |
 | `sourceFile.tsx` | the file | its statements one per line, comments and blank-line groups kept |
 | `function.tsx` | `function f() { ... }`, a function expression, a method `m() { ... }`, `constructor() { ... }` | `def f() ... end`, `def constructor() ... end` |
+| `return.tsx` | `return x` as the last line of a body | `x` |
+| `return.tsx` | a last line that is not a `return` | the line, then `return undefined` |
 | `class.tsx` | `class A<T> extends B { ... }` | `class A[T] < B ... end` |
 | `class.tsx` | `interface A<T> extends B { ... }` | `interface A[T] < B ... end` |
 | `class.tsx` | `extends B` | `< B`, the `implements` left as written |
@@ -66,6 +68,29 @@ and an interface's `extends B, C` reads as `< B, C` the same way. An
 parameter's constraint, `A<T extends B>`, is not a heritage clause and
 keeps its `extends` in that test; through the whole theme it reads as `<`
 too, by `rubyTypeParameter` (see Generics).
+
+### The value of a body
+
+Ruby returns the value of a method's last line, so the `return` of a
+last `return x` is noise: `rubyLastReturn` claims that one statement and
+shows its expression, `x`. Only the last statement of a function
+declaration, a function expression or a method; a `return` earlier in
+the body or inside an `if` block leaves early and keeps its word, a bare
+`return` has no value to leave behind, and a constructor's body says
+nothing about what `new` returns. An arrow function and an accessor are
+shown as written, braces and all, so their `return` stays with them.
+
+The same Ruby eye misreads a body whose last line is not a `return`: it
+takes the line's value for the function's, and the function returns
+`undefined`. So `RubyFunction` writes `return undefined` after that line,
+in words of its own, marked with the last statement, since that is the
+line the reader would have misread. An empty body gets no such line,
+Ruby's `nil` and this `undefined` saying the same nothing; neither does a
+body whose last statement leaves on every path, a `throw`, a block
+ending in a jump, an `if` whose both branches do. That much the syntax
+says; the checker's flow analysis is not public, so an `if` chain that
+returns from every branch without an `else` gets the line though the end
+is unreachable.
 
 ### If
 

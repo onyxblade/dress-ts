@@ -18,7 +18,7 @@ describe('ruby theme keeps comments', () => {
   })
 
   it('shows comments after the last statement of a body, with their gap', () => {
-    expect(show('function f() {\n  a();\n\n  // dangling\n}')).toBe('def f()\n  a()\n\n  // dangling\nend\n')
+    expect(show('function f() {\n  a();\n\n  // dangling\n}')).toBe('def f()\n  a()\n\n  // dangling\n  return undefined\nend\n')
   })
 
   it('shows comments in every branch of an if', () => {

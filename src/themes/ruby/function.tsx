@@ -2,6 +2,7 @@ import ts from 'typescript'
 import { Indent, Join, Line, Lines, Render, claim, type NodeProps } from '../../core'
 import { TypeList } from './generics'
 import { Modifiers } from './modifiers'
+import { UndefinedReturn } from './return'
 
 /** Function declarations, function expressions, class methods and constructors share the `def` shape. */
 export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.MethodDeclaration | ts.ConstructorDeclaration
@@ -20,6 +21,11 @@ export type DefLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.Method
  * A constructor has no name node, its `constructor` is a token, so the
  * word is this component's: `def constructor(...)`. Not `initialize`,
  * since the file's own calls say `new`.
+ *
+ * The body's last line is where Ruby reads the value: a last `return x`
+ * reads as `x` (see return.tsx), and a last line that is not a `return`
+ * is followed by a `return undefined` of the theme's own, so the reader
+ * does not take the line for the value.
  */
 export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
   return (
@@ -41,6 +47,7 @@ export function RubyFunction({ node, ctx }: NodeProps<DefLike>) {
         <>
           <Indent>
             <Lines nodes={node.body.statements} within={node.body} ctx={ctx} />
+            <UndefinedReturn fn={node} ctx={ctx} />
           </Indent>
           <Line>end</Line>
         </>
